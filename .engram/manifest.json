@@ -40,6 +40,14 @@
       "sessions": 1,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "75d6fbf1",
+      "created_by": "malon",
+      "created_at": "2026-11-06T03:46:18.2043438Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
