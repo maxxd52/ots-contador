@@ -79,14 +79,6 @@ class AppController {
     this.bannerAcumulados = document.getElementById('banner-acumulados');
     this.bannerAcumuladosDesc = document.getElementById('banner-acumulados-desc');
 
-    // Banner de Sesión Activa / Cronómetro
-    this.bannerSesionActiva = document.getElementById('banner-sesion-activa');
-    this.activeSessionSuper = document.getElementById('active-session-super');
-    this.activeSessionArea = document.getElementById('active-session-area');
-    this.activeSessionClock = document.getElementById('active-session-clock');
-    this.btnCompletarSesionActiva = document.getElementById('btn-completar-sesion-activa');
-    this.btnCancelarSesionActiva = document.getElementById('btn-cancelar-sesion-activa');
-
     // Resumen de horas
     this.horasSemana = document.getElementById('horas-semana');
     this.horasMes = document.getElementById('horas-mes');
@@ -154,10 +146,6 @@ class AppController {
 
     // Abrir modal nuevo lote
     this.btnNuevoLote.addEventListener('click', () => this.abrirModalLote());
-
-    // Acciones del Banner de Sesión Activa
-    this.btnCompletarSesionActiva.addEventListener('click', () => this.terminarSesionActiva());
-    this.btnCancelarSesionActiva.addEventListener('click', () => this.cancelarSesionActiva());
 
     // Cerrar modales
     document.getElementById('btn-cerrar-modal-sesion').addEventListener('click', () => this.cerrarModales());
@@ -381,15 +369,11 @@ class AppController {
     const segs = Math.max(0, Math.floor((ahora - inicio) / 1000));
     const texto = formatearCronometro(segs);
 
-    if (this.activeSessionClock) {
-      this.activeSessionClock.textContent = texto;
-    }
-
-    // Actualizar texto dentro del botón de la tarjeta si está visible
-    const btnActivoCard = document.querySelector(`.btn-action-finish[data-id="${this.sesionActiva.loteId}"] .clock-span`);
-    if (btnActivoCard) {
-      btnActivoCard.textContent = texto;
-    }
+    // Actualizar tiempo en el botón de la tarjeta activa
+    const spans = document.querySelectorAll(`.clock-span[data-id="${this.sesionActiva.loteId}"]`);
+    spans.forEach(el => {
+      el.textContent = texto;
+    });
   }
 
   /* ========================================================================
@@ -399,17 +383,12 @@ class AppController {
   renderizar() {
     const ahora = new Date();
 
-    // 1. Banner de Sesión Activa
+    // Actualizar cronómetro si hay sesión activa
     if (this.sesionActiva) {
-      this.bannerSesionActiva.classList.remove('oculto');
-      this.activeSessionSuper.textContent = this.sesionActiva.supermercado;
-      this.activeSessionArea.textContent = `📍 ${this.sesionActiva.area}`;
       this._actualizarDigitosCronometro();
-    } else {
-      this.bannerSesionActiva.classList.add('oculto');
     }
 
-    // 2. Clasificar cada lote
+    // 1. Clasificar cada lote
     const listos = [];
     const proximos = [];
     const futuros = [];
@@ -515,7 +494,7 @@ class AppController {
       return `
         <article class="lote-card ${claseCard}">
           <div class="card-top">
-            <div>
+            <div class="card-title-group">
               <h3 class="card-supermercado">${lote.supermercado}</h3>
               <p class="card-area">📍 ${lote.area}</p>
             </div>
@@ -538,8 +517,11 @@ class AppController {
 
           <div class="card-actions">
             ${esActivo ? `
-              <button class="btn btn-action-finish" data-accion="terminar-sesion" data-id="${lote.id}">
-                ⏹️ Terminar Fotos (<span class="clock-span">00:00</span>)
+              <button class="btn btn-action-finish flex-1" data-accion="terminar-sesion" data-id="${lote.id}">
+                ⏹️ Terminar Fotos (<span class="clock-span" data-id="${lote.id}">00:00</span>)
+              </button>
+              <button class="btn btn-secondary btn-sm" data-accion="cancelar-sesion" data-id="${lote.id}" title="Descartar sesión">
+                ✖️ Descartar
               </button>
             ` : `
               <button class="btn btn-action-start" data-accion="iniciar-trabajo" data-id="${lote.id}">
@@ -562,6 +544,12 @@ class AppController {
     this.listaListos.querySelectorAll('[data-accion="terminar-sesion"]').forEach(btn => {
       btn.addEventListener('click', () => {
         this.terminarSesionActiva();
+      });
+    });
+
+    this.listaListos.querySelectorAll('[data-accion="cancelar-sesion"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.cancelarSesionActiva();
       });
     });
 
@@ -617,7 +605,7 @@ class AppController {
             ${lotesDelDia.map(lote => `
               <article class="lote-card card-upcoming card-clickable" data-accion="ver-detalle" data-id="${lote.id}">
                 <div class="card-top">
-                  <div>
+                  <div class="card-title-group">
                     <h4 class="card-supermercado">${lote.supermercado}</h4>
                     <p class="card-area">📍 ${lote.area}</p>
                   </div>
@@ -655,7 +643,7 @@ class AppController {
     this.listaFuturos.innerHTML = futuros.map(lote => `
       <article class="lote-card card-clickable" data-accion="ver-detalle" data-id="${lote.id}">
         <div class="card-top">
-          <div>
+          <div class="card-title-group">
             <h4 class="card-supermercado">${lote.supermercado}</h4>
             <p class="card-area">📍 ${lote.area}</p>
           </div>

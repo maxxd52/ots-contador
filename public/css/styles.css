@@ -352,13 +352,21 @@ body.modal-open {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
+}
+
+.card-title-group {
+  flex: 1;
+  min-width: 0;
 }
 
 .card-supermercado {
   font-size: 1.02rem;
   font-weight: 700;
   color: var(--text-main);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.3;
 }
 
 .card-area {
@@ -366,6 +374,8 @@ body.modal-open {
   color: var(--color-primary);
   font-weight: 500;
   margin-top: 2px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .card-badge {
@@ -677,88 +687,6 @@ body.modal-open {
   color: #f87171;
   border-color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
-}
-
-/* Banner de Sesión Activa / Cronómetro en Vivo */
-.active-session-banner {
-  background: linear-gradient(135deg, #0f2b48 0%, #172554 100%);
-  border: 1px solid #38bdf8;
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.25);
-  position: sticky;
-  top: 10px;
-  z-index: 50;
-  backdrop-filter: blur(8px);
-}
-
-.active-session-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.active-session-info strong {
-  display: block;
-  font-size: 0.95rem;
-  color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.active-session-info span {
-  font-size: 0.78rem;
-  color: #93c5fd;
-}
-
-.active-pulse-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #f43f5e;
-  box-shadow: 0 0 10px #f43f5e;
-  animation: pulse-dot 1.2s infinite ease-in-out;
-  flex-shrink: 0;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.3); opacity: 0.6; }
-}
-
-.active-session-timer {
-  text-align: center;
-  padding: 0 8px;
-}
-
-.active-clock-digits {
-  font-family: monospace;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #38bdf8;
-  letter-spacing: 0.05em;
-  display: block;
-}
-
-.active-clock-label {
-  font-size: 0.65rem;
-  color: #93c5fd;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.active-session-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .card-active-session {
