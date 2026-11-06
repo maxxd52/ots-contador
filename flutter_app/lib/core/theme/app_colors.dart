@@ -14,6 +14,7 @@ abstract class AppColors {
   static const Color primaryGreenLight = Color(0xFFE6F9F0);
 
   // Fondos y Superficies (Modo Claro Material 3)
+  static const Color desktopBackdrop = Color(0xFFEBE7F3);
   static const Color scaffoldBackground = Color(0xFFF4F3F8);
   static const Color surfaceCard = Color(0xFFFFFFFF);
   static const Color surfaceInput = Color(0xFFF9F8FC);

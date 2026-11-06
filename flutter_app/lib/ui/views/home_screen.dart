@@ -136,94 +136,145 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final vm = widget.viewModel;
 
         return Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            title: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 580),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          'OTS 120 Días',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                    FilledButton.icon(
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Lote'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      onPressed: () => _abrirModalNuevoLote(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          backgroundColor: AppColors.desktopBackdrop,
           body: vm.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 580),
-                    child: Column(
-                      children: [
-                        // Resumen Superior de KPIs en Cabecera
-                        Container(
-                          color: AppColors.primaryPurple,
-                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                          child: KpiHeaderWidget(
-                            horasHoy: vm.kpiHorasHoy,
-                            listosHoy: vm.kpiListosHoy,
-                            proximos7d: vm.kpiProximos7d,
-                          ),
-                        ),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth > 580;
 
-                        // Selector de Pestañas M3
-                        Container(
-                          color: AppColors.surfaceCard,
-                          child: TabBar(
-                            controller: _tabController,
-                            labelColor: AppColors.primaryPurple,
-                            unselectedLabelColor: AppColors.textDim,
-                            indicatorColor: AppColors.primaryPurple,
-                            indicatorWeight: 3,
-                            tabs: const [
-                              Tab(
-                                icon: Icon(Icons.assignment_outlined, size: 18),
-                                text: 'Tablero & Itinerario',
-                              ),
-                              Tab(
-                                icon: Icon(Icons.history_outlined, size: 18),
-                                text: 'Historial & Horas',
-                              ),
-                            ],
+                    final appContent = Container(
+                      color: AppColors.scaffoldBackground,
+                      child: Column(
+                        children: [
+                          // Cabecera Púrpura Curvada Integrada
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryPurple,
+                              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x2A612680),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              (isDesktop ? 16.0 : MediaQuery.of(context).padding.top + 10),
+                              16,
+                              16,
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.camera_alt, size: 22, color: Colors.white),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'OTS 120 Días',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 19,
+                                            color: Colors.white,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    FilledButton.icon(
+                                      icon: const Icon(Icons.add, size: 16),
+                                      label: const Text('Lote'),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.primaryGreen,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      onPressed: () => _abrirModalNuevoLote(),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                KpiHeaderWidget(
+                                  horasHoy: vm.kpiHorasHoy,
+                                  listosHoy: vm.kpiListosHoy,
+                                  proximos7d: vm.kpiProximos7d,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        // Contenido de las pestañas
-                        Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _buildTableroTab(vm),
-                              _buildHistorialTab(vm),
-                            ],
+                          // Selector de Pestañas M3
+                          Container(
+                            color: AppColors.surfaceCard,
+                            child: TabBar(
+                              controller: _tabController,
+                              labelColor: AppColors.primaryPurple,
+                              unselectedLabelColor: AppColors.textDim,
+                              indicatorColor: AppColors.primaryPurple,
+                              indicatorWeight: 3,
+                              tabs: const [
+                                Tab(
+                                  icon: Icon(Icons.assignment_outlined, size: 18),
+                                  text: 'Tablero & Itinerario',
+                                ),
+                                Tab(
+                                  icon: Icon(Icons.history_outlined, size: 18),
+                                  text: 'Historial & Horas',
+                                ),
+                              ],
+                            ),
                           ),
+
+                          // Contenido de las pestañas
+                          Expanded(
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                _buildTableroTab(vm),
+                                _buildHistorialTab(vm),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (!isDesktop) {
+                      return appContent;
+                    }
+
+                    // En pantallas de escritorio: marco de aplicación centrado
+                    return Center(
+                      child: Container(
+                        width: 500,
+                        margin: const EdgeInsets.symmetric(vertical: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.scaffoldBackground,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: AppColors.borderSubtle, width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryPurple.withValues(alpha: 0.12),
+                              blurRadius: 28,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                        clipBehavior: Clip.antiAlias,
+                        child: appContent,
+                      ),
+                    );
+                  },
                 ),
         );
       },
