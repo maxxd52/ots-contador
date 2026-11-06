@@ -57,7 +57,13 @@ body {
   color: var(--text-main);
   line-height: 1.5;
   min-height: 100vh;
-  padding-bottom: 90px; /* Espacio para FAB */
+  padding-bottom: 40px;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Contenedor principal centrado para móvil / tablet */
@@ -872,38 +878,32 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(11, 17, 32, 0.85);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
-  align-items: flex-end; /* En móvil sale desde abajo tipo bottom sheet */
+  align-items: center; /* Centrado vertical elegante */
   justify-content: center;
   z-index: 200;
-  padding: 0;
+  padding: 16px; /* Margen de seguridad contra bordes en móviles */
+  overscroll-behavior: contain;
   transition: opacity 0.2s ease;
-}
-
-@media (min-width: 600px) {
-  .modal-overlay {
-    align-items: center;
-    padding: 20px;
-  }
 }
 
 .modal-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   width: 100%;
-  max-width: 520px;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  max-width: 480px;
+  border-radius: var(--radius-lg); /* Bordes redondeados en las 4 esquinas */
   padding: 20px;
-  max-height: 90vh;
+  max-height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-shadow: var(--shadow-lg);
-}
-
-@media (min-width: 600px) {
-  .modal-card {
-    border-radius: var(--radius-lg);
-  }
+  margin: auto;
+  position: relative;
 }
 
 .modal-header {

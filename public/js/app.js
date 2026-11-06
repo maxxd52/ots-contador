@@ -166,6 +166,15 @@ class AppController {
     document.getElementById('btn-cancelar-lote').addEventListener('click', () => this.cerrarModales());
     document.getElementById('btn-cerrar-modal-detalle').addEventListener('click', () => this.cerrarModales());
 
+    // Cerrar al hacer clic en el backdrop (fuera de la tarjeta)
+    [this.modalSesion, this.modalLote, this.modalDetalleLote].forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          this.cerrarModales();
+        }
+      });
+    });
+
     // Acciones dentro de Ficha Detallada
     this.btnAdelantarLote.addEventListener('click', () => this.adelantarLoteSeleccionado());
     this.btnEditarDesdeDetalle.addEventListener('click', () => {
@@ -195,7 +204,21 @@ class AppController {
     });
   }
 
+  _bloquearScroll() {
+    document.body.classList.add('modal-open');
+  }
+
+  _desbloquearScroll() {
+    setTimeout(() => {
+      const algunModalAbierto = document.querySelector('.modal-overlay:not(.oculto)');
+      if (!algunModalAbierto) {
+        document.body.classList.remove('modal-open');
+      }
+    }, 50);
+  }
+
   mostrarConfirmacion({ titulo, mensaje, textoAceptar = 'Eliminar', icono = '🗑️', esPeligroso = true }) {
+    this._bloquearScroll();
     return new Promise((resolve) => {
       this.confirmTitulo.textContent = titulo;
       this.confirmMensaje.textContent = mensaje;
@@ -214,6 +237,8 @@ class AppController {
         this.modalConfirmacion.classList.add('oculto');
         this.btnConfirmAceptar.removeEventListener('click', onAceptar);
         this.btnConfirmCancelar.removeEventListener('click', onCancelar);
+        this.modalConfirmacion.removeEventListener('click', onBackdrop);
+        this._desbloquearScroll();
       };
 
       const onAceptar = () => {
@@ -226,8 +251,16 @@ class AppController {
         resolve(false);
       };
 
+      const onBackdrop = (e) => {
+        if (e.target === this.modalConfirmacion) {
+          limpiar();
+          resolve(false);
+        }
+      };
+
       this.btnConfirmAceptar.addEventListener('click', onAceptar);
       this.btnConfirmCancelar.addEventListener('click', onCancelar);
+      this.modalConfirmacion.addEventListener('click', onBackdrop);
       this.modalConfirmacion.classList.remove('oculto');
     });
   }
@@ -301,6 +334,7 @@ class AppController {
     this.inputSesionObs.value = '';
 
     this.actualizarCalculoEnVivo();
+    this._bloquearScroll();
     this.modalSesion.classList.remove('oculto');
   }
 
@@ -768,6 +802,7 @@ class AppController {
       this.detalleNotasWrapper.classList.add('oculto');
     }
 
+    this._bloquearScroll();
     this.modalDetalleLote.classList.remove('oculto');
   }
 
@@ -817,6 +852,7 @@ class AppController {
       document.getElementById('lote-id').value = '';
     }
 
+    this._bloquearScroll();
     this.modalLote.classList.remove('oculto');
   }
 
@@ -867,6 +903,7 @@ class AppController {
     this.modalLote.classList.add('oculto');
     this.modalDetalleLote.classList.add('oculto');
     this.loteSeleccionadoDetalle = null;
+    this._desbloquearScroll();
   }
 
   aplicarDuracionRapida(minutos) {
