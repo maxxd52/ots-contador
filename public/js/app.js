@@ -77,6 +77,10 @@ class AppController {
     this.modalLote = document.getElementById('modal-lote');
     this.formLote = document.getElementById('form-lote');
 
+    // Datalists para autocompletar en el móvil
+    this.datalistSupermercados = document.getElementById('datalist-supermercados');
+    this.datalistAreas = document.getElementById('datalist-areas');
+
     // Campos modal sesión
     this.inputSesionLoteId = document.getElementById('sesion-lote-id');
     this.inputSesionSupermercado = document.getElementById('sesion-supermercado');
@@ -214,6 +218,7 @@ class AppController {
     this._renderizarProximos(proximos);
     this._renderizarFuturos(futuros);
     this._renderizarHistorialYHoras();
+    this._actualizarDatalists();
 
     // 3. Actualizar contadores
     this.badgeCountListos.textContent = listos.length;
@@ -221,6 +226,28 @@ class AppController {
     this.badgeCountFuturos.textContent = futuros.length;
     this.statListos.textContent = listos.length;
     this.statProximos.textContent = proximos.length;
+  }
+
+  _actualizarDatalists() {
+    if (!this.datalistSupermercados || !this.datalistAreas) return;
+
+    const supers = new Set();
+    const areas = new Set();
+
+    this.lotes.forEach(l => {
+      if (l.supermercado) supers.add(l.supermercado);
+      if (l.area) areas.add(l.area);
+    });
+
+    this.datalistSupermercados.innerHTML = Array.from(supers)
+      .sort()
+      .map(s => `<option value="${s}"></option>`)
+      .join('');
+
+    this.datalistAreas.innerHTML = Array.from(areas)
+      .sort()
+      .map(a => `<option value="${a}"></option>`)
+      .join('');
   }
 
   _renderizarBannerAcumulados(cantidad) {
