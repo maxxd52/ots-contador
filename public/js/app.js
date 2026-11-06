@@ -37,7 +37,6 @@ class AppController {
   async iniciar() {
     this._vincularElementosUI();
     this._vincularEventos();
-    this._actualizarBadgeBackend();
 
     // Recuperar sesión activa persistida si existe (resiste recargas de navegador)
     this.sesionActiva = await this.storage.obtenerSesionActiva();
@@ -133,6 +132,15 @@ class AppController {
 
     // Botón superior único
     this.btnNuevoLote = document.getElementById('btn-nuevo-lote');
+
+    // Modal confirmación estilizado
+    this.modalConfirmacion = document.getElementById('modal-confirmacion');
+    this.confirmIcono = document.getElementById('confirm-icono');
+    this.confirmIconBox = document.querySelector('.confirm-icon-box');
+    this.confirmTitulo = document.getElementById('confirm-titulo');
+    this.confirmMensaje = document.getElementById('confirm-mensaje');
+    this.btnConfirmAceptar = document.getElementById('btn-confirm-aceptar');
+    this.btnConfirmCancelar = document.getElementById('btn-confirm-cancelar');
   }
 
   _vincularEventos() {
@@ -187,17 +195,41 @@ class AppController {
     });
   }
 
-  _actualizarBadgeBackend() {
-    const badge = document.getElementById('badge-backend');
-    if (badge) {
-      if (CONFIG.STORAGE_BACKEND === 'firebase') {
-        badge.textContent = 'Firebase';
-        badge.classList.add('firebase');
+  mostrarConfirmacion({ titulo, mensaje, textoAceptar = 'Eliminar', icono = '🗑️', esPeligroso = true }) {
+    return new Promise((resolve) => {
+      this.confirmTitulo.textContent = titulo;
+      this.confirmMensaje.textContent = mensaje;
+      this.confirmIcono.textContent = icono;
+      this.btnConfirmAceptar.textContent = textoAceptar;
+
+      if (esPeligroso) {
+        this.confirmIconBox.classList.remove('confirm-info');
+        this.btnConfirmAceptar.className = 'btn btn-danger';
       } else {
-        badge.textContent = 'Local';
-        badge.classList.remove('firebase');
+        this.confirmIconBox.classList.add('confirm-info');
+        this.btnConfirmAceptar.className = 'btn btn-primary';
       }
-    }
+
+      const limpiar = () => {
+        this.modalConfirmacion.classList.add('oculto');
+        this.btnConfirmAceptar.removeEventListener('click', onAceptar);
+        this.btnConfirmCancelar.removeEventListener('click', onCancelar);
+      };
+
+      const onAceptar = () => {
+        limpiar();
+        resolve(true);
+      };
+
+      const onCancelar = () => {
+        limpiar();
+        resolve(false);
+      };
+
+      this.btnConfirmAceptar.addEventListener('click', onAceptar);
+      this.btnConfirmCancelar.addEventListener('click', onCancelar);
+      this.modalConfirmacion.classList.remove('oculto');
+    });
   }
 
   cambiarPestana(tab) {
@@ -274,7 +306,14 @@ class AppController {
 
   async cancelarSesionActiva() {
     if (!this.sesionActiva) return;
-    if (confirm(`¿Descartar la sesión en curso de "${this.sesionActiva.supermercado} - ${this.sesionActiva.area}" sin guardar?`)) {
+    const confirmado = await this.mostrarConfirmacion({
+      titulo: '¿Descartar sesión en curso?',
+      mensaje: `Se cancelará el cronómetro de "${this.sesionActiva.supermercado} - ${this.sesionActiva.area}" sin registrar las horas.`,
+      textoAceptar: 'Descartar',
+      icono: '⚠️',
+      esPeligroso: true
+    });
+    if (confirmado) {
       this._detenerTickerSegundo();
       this.sesionActiva = null;
       await this.storage.limpiarSesionActiva();
@@ -736,7 +775,15 @@ class AppController {
     if (!this.loteSeleccionadoDetalle) return;
     const { supermercado, area, id } = this.loteSeleccionadoDetalle;
 
-    if (confirm(`¿Deseas habilitar "${supermercado} - ${area}" para fotografiar HOY?`)) {
+    const confirmado = await this.mostrarConfirmacion({
+      titulo: '¿Habilitar para hoy?',
+      mensaje: `¿Deseas adelantar "${supermercado} - ${area}" para poder fotografiarlo hoy mismo?`,
+      textoAceptar: 'Habilitar Hoy',
+      icono: '⚡',
+      esPeligroso: false
+    });
+
+    if (confirmado) {
       try {
         await this.storage.adelantarLote(id);
         this.cerrarModales();
@@ -777,7 +824,15 @@ class AppController {
     const lote = this.lotes.find(l => l.id === loteId);
     if (!lote) return;
 
-    if (confirm(`¿Estás seguro de que deseas eliminar "${lote.supermercado} - ${lote.area}"?`)) {
+    const confirmado = await this.mostrarConfirmacion({
+      titulo: '¿Eliminar este lote?',
+      mensaje: `Se quitará "${lote.supermercado} - ${lote.area}" de tus tiendas. El historial previo se mantendrá.`,
+      textoAceptar: 'Eliminar Lote',
+      icono: '🗑️',
+      esPeligroso: true
+    });
+
+    if (confirmado) {
       try {
         await this.storage.eliminarLote(loteId);
         this.cerrarModales();
@@ -789,7 +844,15 @@ class AppController {
   }
 
   async eliminarRegistroHistorial(registroId) {
-    if (confirm('¿Deseas eliminar este registro de trabajo del historial?')) {
+    const confirmado = await this.mostrarConfirmacion({
+      titulo: '¿Eliminar registro?',
+      mensaje: '¿Estás seguro de que deseas eliminar esta sesión de fotos del historial?',
+      textoAceptar: 'Eliminar Registro',
+      icono: '🗑️',
+      esPeligroso: true
+    });
+
+    if (confirmado) {
       try {
         await this.storage.eliminarRegistro(registroId);
         await this.cargarDatos();
