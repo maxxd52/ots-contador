@@ -231,24 +231,26 @@
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group flex-1">
+          <div class="datetime-grid">
+            <div class="form-group">
               <label for="sesion-inicio">Fecha y Hora de Inicio *</label>
               <input type="datetime-local" id="sesion-inicio" required>
             </div>
-            <div class="form-group flex-1">
+            <div class="form-group">
               <label for="sesion-fin">Fecha y Hora de Fin *</label>
               <input type="datetime-local" id="sesion-fin" required>
             </div>
           </div>
 
           <!-- Botones de Atajo para Duración -->
-          <div class="quick-duration-strip">
+          <div class="quick-duration-container">
             <span class="quick-label">Duración rápida:</span>
-            <button type="button" class="btn-chip" data-minutos="30">+30 min</button>
-            <button type="button" class="btn-chip" data-minutos="45">+45 min</button>
-            <button type="button" class="btn-chip" data-minutos="60">+1 hora</button>
-            <button type="button" class="btn-chip" data-minutos="90">+1.5 h</button>
+            <div class="quick-chips-grid">
+              <button type="button" class="btn-chip" data-minutos="30">+30 min</button>
+              <button type="button" class="btn-chip" data-minutos="45">+45 min</button>
+              <button type="button" class="btn-chip" data-minutos="60">+1 hora</button>
+              <button type="button" class="btn-chip" data-minutos="90">+1.5 h</button>
+            </div>
           </div>
 
           <!-- Caja de Cálculo de Horas & Próximo Desbloqueo en Vivo -->
@@ -257,9 +259,13 @@
               <span class="calc-label">⏱️ Tiempo trabajado:</span>
               <span id="calc-tiempo-trabajado" class="calc-value">0h 0m</span>
             </div>
-            <div class="calc-row">
-              <span class="calc-label">🔒 Próximo desbloqueo (+120 días):</span>
-              <span id="calc-desbloqueo-preview" class="calc-value accent">--/--/---- --:--</span>
+            <div class="calc-divider"></div>
+            <div class="calc-unlock-card">
+              <div class="calc-unlock-header">
+                <span class="calc-label">🔒 Próximo desbloqueo:</span>
+                <span class="calc-badge-cycle">+120 días exactos</span>
+              </div>
+              <div id="calc-desbloqueo-preview" class="calc-unlock-time">--/--/---- --:--</div>
             </div>
             <p class="calc-help">El lote volverá a estar disponible exactamente a la misma hora del inicio.</p>
           </div>
