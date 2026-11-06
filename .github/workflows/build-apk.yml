@@ -1,0 +1,49 @@
+name: Compilar APK Flutter
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilar APK Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: 'stable'
+
+      - name: Instalar Dependencias
+        run: |
+          cd flutter_app
+          flutter pub get
+
+      - name: Ejecutar Pruebas Unitarias
+        run: |
+          cd flutter_app
+          flutter test
+
+      - name: Compilar APK Release
+        run: |
+          cd flutter_app
+          flutter build apk --release
+
+      - name: Publicar APK como Artefacto Descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: OTS-120-Dias-Android-App
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

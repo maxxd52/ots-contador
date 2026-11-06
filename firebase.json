@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "flutter_app/build/web",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -14,7 +14,7 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css)",
+        "source": "**/*.@(js|css|wasm)",
         "headers": [
           {
             "key": "Cache-Control",
