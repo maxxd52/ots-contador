@@ -37,9 +37,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _abrirModalNuevoLote({Lote? loteParaEditar}) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) => ModalLoteSheet(
         loteParaEditar: loteParaEditar,
         onGuardar: (lote) async {
@@ -56,9 +55,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       inicio = DateTime.parse(sesion['inicio'] as String);
     }
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) => ModalSesionSheet(
         lote: lote,
         inicio: inicio,
@@ -87,9 +85,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _abrirModalDetalles(Lote lote) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) => ModalDetalleLoteSheet(
         lote: lote,
         onHabilitarHoy: () async {
@@ -140,82 +137,93 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         return Scaffold(
           appBar: AppBar(
-            title: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'OTS 120 Días',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-                ),
-              ],
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Lote'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  onPressed: () => _abrirModalNuevoLote(),
+            elevation: 0,
+            title: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'OTS 120 Días',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                        ),
+                      ],
+                    ),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Lote'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => _abrirModalNuevoLote(),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
           body: vm.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  children: [
-                    // Resumen Superior de KPIs en Cabecera
-                    Container(
-                      color: AppColors.primaryPurple,
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                      child: KpiHeaderWidget(
-                        horasHoy: vm.kpiHorasHoy,
-                        listosHoy: vm.kpiListosHoy,
-                        proximos7d: vm.kpiProximos7d,
-                      ),
-                    ),
-
-                    // Selector de Pestañas M3
-                    Container(
-                      color: AppColors.surfaceCard,
-                      child: TabBar(
-                        controller: _tabController,
-                        labelColor: AppColors.primaryPurple,
-                        unselectedLabelColor: AppColors.textDim,
-                        indicatorColor: AppColors.primaryPurple,
-                        indicatorWeight: 3,
-                        tabs: const [
-                          Tab(
-                            icon: Icon(Icons.assignment_outlined, size: 18),
-                            text: 'Tablero & Itinerario',
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 580),
+                    child: Column(
+                      children: [
+                        // Resumen Superior de KPIs en Cabecera
+                        Container(
+                          color: AppColors.primaryPurple,
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                          child: KpiHeaderWidget(
+                            horasHoy: vm.kpiHorasHoy,
+                            listosHoy: vm.kpiListosHoy,
+                            proximos7d: vm.kpiProximos7d,
                           ),
-                          Tab(
-                            icon: Icon(Icons.history_outlined, size: 18),
-                            text: 'Historial & Horas',
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
 
-                    // Contenido de las pestañas
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildTableroTab(vm),
-                          _buildHistorialTab(vm),
-                        ],
-                      ),
+                        // Selector de Pestañas M3
+                        Container(
+                          color: AppColors.surfaceCard,
+                          child: TabBar(
+                            controller: _tabController,
+                            labelColor: AppColors.primaryPurple,
+                            unselectedLabelColor: AppColors.textDim,
+                            indicatorColor: AppColors.primaryPurple,
+                            indicatorWeight: 3,
+                            tabs: const [
+                              Tab(
+                                icon: Icon(Icons.assignment_outlined, size: 18),
+                                text: 'Tablero & Itinerario',
+                              ),
+                              Tab(
+                                icon: Icon(Icons.history_outlined, size: 18),
+                                text: 'Historial & Horas',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Contenido de las pestañas
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildTableroTab(vm),
+                              _buildHistorialTab(vm),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
         );
       },
@@ -305,14 +313,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 cronometroTexto: vm.cronometroTexto,
                 onIniciarFotos: () => vm.iniciarFotos(lote),
                 onTerminarFotos: () => _abrirModalTerminarSesion(lote),
+                onDescartarSesion: () => _confirmarDescartarSesion(lote),
                 onEditar: () => _abrirModalNuevoLote(loteParaEditar: lote),
-                onEliminar: () {
-                  if (esActivo) {
-                    _confirmarDescartarSesion(lote);
-                  } else {
-                    _confirmarEliminarLote(lote);
-                  }
-                },
+                onEliminar: () => _confirmarEliminarLote(lote),
                 onVerDetalles: () => _abrirModalDetalles(lote),
               ),
             );

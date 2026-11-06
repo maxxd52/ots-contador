@@ -11,6 +11,7 @@ class LoteCardWidget extends StatelessWidget {
   final String? cronometroTexto;
   final VoidCallback onIniciarFotos;
   final VoidCallback onTerminarFotos;
+  final VoidCallback? onDescartarSesion;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
   final VoidCallback? onVerDetalles;
@@ -22,6 +23,7 @@ class LoteCardWidget extends StatelessWidget {
     this.cronometroTexto,
     required this.onIniciarFotos,
     required this.onTerminarFotos,
+    this.onDescartarSesion,
     required this.onEditar,
     required this.onEliminar,
     this.onVerDetalles,
@@ -212,18 +214,41 @@ class LoteCardWidget extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: esSesionActiva
-                              ? ElevatedButton.icon(
-                                  icon: const Icon(Icons.stop_circle, size: 18),
-                                  label: Text('⏹ Terminar Fotos (${cronometroTexto ?? "00:00"})'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.dangerRed,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        icon: const Icon(Icons.stop_circle, size: 18),
+                                        label: Text('⏹ Terminar Fotos (${cronometroTexto ?? "00:00"})'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.dangerRed,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onPressed: onTerminarFotos,
+                                      ),
                                     ),
-                                  ),
-                                  onPressed: onTerminarFotos,
+                                    if (onDescartarSesion != null) ...[
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.close, size: 20),
+                                        tooltip: 'Descartar cronómetro',
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: AppColors.dangerContainer,
+                                          foregroundColor: AppColors.dangerRed,
+                                          padding: const EdgeInsets.all(12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            side: const BorderSide(color: AppColors.dangerBorder),
+                                          ),
+                                        ),
+                                        onPressed: onDescartarSesion,
+                                      ),
+                                    ],
+                                  ],
                                 )
                               : ElevatedButton.icon(
                                   icon: const Icon(Icons.play_circle_filled, size: 18),
