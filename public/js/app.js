@@ -1,5 +1,7 @@
 /**
  * Controlador Principal de la Aplicación: OTS 120 Días
+ * Flujo simplificado: Cronómetro de 1 toque (Iniciar -> En Curso -> Terminar),
+ * Gestión completa (Editar y Eliminar) y Ficha interactiva de lotes futuros.
  */
 
 import { getStorage } from './storage/index.js';
@@ -12,6 +14,7 @@ import {
   formatearFechaHora,
   formatearFechaCorta,
   formatearHora,
+  formatearCronometro,
   obtenerNombreDia,
   claveDia,
   esMismoDia,
@@ -23,14 +26,25 @@ class AppController {
     this.storage = getStorage();
     this.lotes = [];
     this.registros = [];
+    this.sesionActiva = null; // { loteId, supermercado, area, cantidadProductos, fechaHoraInicio }
     this.tabActiva = 'tablero';
+    this.loteSeleccionadoDetalle = null;
+
     this._intervaloTicker = null;
+    this._intervaloSegundo = null;
   }
 
   async iniciar() {
     this._vincularElementosUI();
     this._vincularEventos();
     this._actualizarBadgeBackend();
+
+    // Recuperar sesión activa persistida si existe (resiste recargas de navegador)
+    this.sesionActiva = await this.storage.obtenerSesionActiva();
+    if (this.sesionActiva) {
+      this._iniciarTickerSegundo();
+    }
+
     await this.cargarDatos();
 
     // Actualizar tiempos relativos cada 60 segundos
@@ -66,6 +80,14 @@ class AppController {
     this.bannerAcumulados = document.getElementById('banner-acumulados');
     this.bannerAcumuladosDesc = document.getElementById('banner-acumulados-desc');
 
+    // Banner de Sesión Activa / Cronómetro
+    this.bannerSesionActiva = document.getElementById('banner-sesion-activa');
+    this.activeSessionSuper = document.getElementById('active-session-super');
+    this.activeSessionArea = document.getElementById('active-session-area');
+    this.activeSessionClock = document.getElementById('active-session-clock');
+    this.btnCompletarSesionActiva = document.getElementById('btn-completar-sesion-activa');
+    this.btnCancelarSesionActiva = document.getElementById('btn-cancelar-sesion-activa');
+
     // Resumen de horas
     this.horasSemana = document.getElementById('horas-semana');
     this.horasMes = document.getElementById('horas-mes');
@@ -76,8 +98,10 @@ class AppController {
     this.formSesion = document.getElementById('form-sesion');
     this.modalLote = document.getElementById('modal-lote');
     this.formLote = document.getElementById('form-lote');
+    this.modalLoteTitulo = document.getElementById('modal-lote-titulo');
+    this.modalDetalleLote = document.getElementById('modal-detalle-lote');
 
-    // Datalists para autocompletar en el móvil
+    // Datalists para autocompletar
     this.datalistSupermercados = document.getElementById('datalist-supermercados');
     this.datalistAreas = document.getElementById('datalist-areas');
 
@@ -92,9 +116,23 @@ class AppController {
     this.calcTiempoTrabajado = document.getElementById('calc-tiempo-trabajado');
     this.calcDesbloqueoPreview = document.getElementById('calc-desbloqueo-preview');
 
-    // Botones
+    // Elementos Ficha Detalle
+    this.detalleTitulo = document.getElementById('detalle-titulo');
+    this.detalleSubtitulo = document.getElementById('detalle-subtitulo');
+    this.detalleCountdownValor = document.getElementById('detalle-countdown-valor');
+    this.detalleFechaExacta = document.getElementById('detalle-fecha-exacta');
+    this.detalleSupermercado = document.getElementById('detalle-supermercado');
+    this.detalleArea = document.getElementById('detalle-area');
+    this.detalleProductos = document.getElementById('detalle-productos');
+    this.detalleUltimaDuracion = document.getElementById('detalle-ultima-duracion');
+    this.detalleNotasWrapper = document.getElementById('detalle-notas-wrapper');
+    this.detalleNotasTexto = document.getElementById('detalle-notas-texto');
+    this.btnAdelantarLote = document.getElementById('btn-adelantar-lote');
+    this.btnEditarDesdeDetalle = document.getElementById('btn-editar-desde-detalle');
+    this.btnEliminarDesdeDetalle = document.getElementById('btn-eliminar-desde-detalle');
+
+    // Botón superior único
     this.btnNuevoLote = document.getElementById('btn-nuevo-lote');
-    this.fabCompletar = document.getElementById('fab-completar');
   }
 
   _vincularEventos() {
@@ -109,26 +147,38 @@ class AppController {
     // Abrir modal nuevo lote
     this.btnNuevoLote.addEventListener('click', () => this.abrirModalLote());
 
-    // FAB para registrar sesión
-    this.fabCompletar.addEventListener('click', () => this.abrirModalSesion());
+    // Acciones del Banner de Sesión Activa
+    this.btnCompletarSesionActiva.addEventListener('click', () => this.terminarSesionActiva());
+    this.btnCancelarSesionActiva.addEventListener('click', () => this.cancelarSesionActiva());
 
     // Cerrar modales
     document.getElementById('btn-cerrar-modal-sesion').addEventListener('click', () => this.cerrarModales());
     document.getElementById('btn-cancelar-sesion').addEventListener('click', () => this.cerrarModales());
     document.getElementById('btn-cerrar-modal-lote').addEventListener('click', () => this.cerrarModales());
     document.getElementById('btn-cancelar-lote').addEventListener('click', () => this.cerrarModales());
+    document.getElementById('btn-cerrar-modal-detalle').addEventListener('click', () => this.cerrarModales());
 
-    // Submit formulario sesión de fotos
+    // Acciones dentro de Ficha Detallada
+    this.btnAdelantarLote.addEventListener('click', () => this.adelantarLoteSeleccionado());
+    this.btnEditarDesdeDetalle.addEventListener('click', () => {
+      const lote = this.loteSeleccionadoDetalle;
+      this.cerrarModales();
+      if (lote) this.abrirModalLote(lote.id);
+    });
+    this.btnEliminarDesdeDetalle.addEventListener('click', () => {
+      const lote = this.loteSeleccionadoDetalle;
+      if (lote) this.eliminarLote(lote.id);
+    });
+
+    // Submits
     this.formSesion.addEventListener('submit', (e) => this.guardarSesion(e));
-
-    // Submit formulario nuevo lote
     this.formLote.addEventListener('submit', (e) => this.guardarLote(e));
 
-    // Cálculo en vivo en modal sesión
+    // Cálculo en vivo
     this.inputSesionInicio.addEventListener('input', () => this.actualizarCalculoEnVivo());
     this.inputSesionFin.addEventListener('input', () => this.actualizarCalculoEnVivo());
 
-    // Chips de duración rápida (+30m, +45m, +60m, +90m)
+    // Chips duración rápida
     document.querySelectorAll('.btn-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         const minutos = parseInt(e.currentTarget.dataset.minutos, 10);
@@ -176,10 +226,117 @@ class AppController {
     }
   }
 
+  /* ========================================================================
+     LÓGICA DEL CRONÓMETRO DE 1 TOQUE (INICIAR -> EN CURSO -> TERMINAR)
+     ======================================================================== */
+
+  async iniciarTrabajoLote(loteId) {
+    if (this.sesionActiva) {
+      alert(`Ya tienes una sesión en curso en "${this.sesionActiva.supermercado} - ${this.sesionActiva.area}". Termínala o cancélala antes de iniciar otra.`);
+      return;
+    }
+
+    const lote = this.lotes.find(l => l.id === loteId);
+    if (!lote) return;
+
+    const ahora = new Date();
+    this.sesionActiva = {
+      loteId: lote.id,
+      supermercado: lote.supermercado,
+      area: lote.area,
+      cantidadProductos: lote.cantidadProductos || 0,
+      fechaHoraInicio: ahora.toISOString()
+    };
+
+    await this.storage.guardarSesionActiva(this.sesionActiva);
+    this._iniciarTickerSegundo();
+    this.renderizar();
+  }
+
+  terminarSesionActiva() {
+    if (!this.sesionActiva) return;
+
+    const ahora = new Date();
+    const inicio = new Date(this.sesionActiva.fechaHoraInicio);
+
+    // Abrir modal de confirmación con los datos exactos precargados
+    this.inputSesionLoteId.value = this.sesionActiva.loteId;
+    this.inputSesionSupermercado.value = this.sesionActiva.supermercado;
+    this.inputSesionArea.value = this.sesionActiva.area;
+    this.inputSesionProductos.value = this.sesionActiva.cantidadProductos || '';
+    this.inputSesionInicio.value = aInputDateTimeLocal(inicio);
+    this.inputSesionFin.value = aInputDateTimeLocal(ahora);
+    this.inputSesionObs.value = '';
+
+    this.actualizarCalculoEnVivo();
+    this.modalSesion.classList.remove('oculto');
+  }
+
+  async cancelarSesionActiva() {
+    if (!this.sesionActiva) return;
+    if (confirm(`¿Descartar la sesión en curso de "${this.sesionActiva.supermercado} - ${this.sesionActiva.area}" sin guardar?`)) {
+      this._detenerTickerSegundo();
+      this.sesionActiva = null;
+      await this.storage.limpiarSesionActiva();
+      this.renderizar();
+    }
+  }
+
+  _iniciarTickerSegundo() {
+    this._detenerTickerSegundo();
+    this._actualizarDigitosCronometro();
+    this._intervaloSegundo = setInterval(() => {
+      this._actualizarDigitosCronometro();
+    }, 1000);
+  }
+
+  _detenerTickerSegundo() {
+    if (this._intervaloSegundo) {
+      clearInterval(this._intervaloSegundo);
+      this._intervaloSegundo = null;
+    }
+  }
+
+  _actualizarDigitosCronometro() {
+    if (!this.sesionActiva) {
+      this._detenerTickerSegundo();
+      return;
+    }
+
+    const inicio = new Date(this.sesionActiva.fechaHoraInicio).getTime();
+    const ahora = Date.now();
+    const segs = Math.max(0, Math.floor((ahora - inicio) / 1000));
+    const texto = formatearCronometro(segs);
+
+    if (this.activeSessionClock) {
+      this.activeSessionClock.textContent = texto;
+    }
+
+    // Actualizar texto dentro del botón de la tarjeta si está visible
+    const btnActivoCard = document.querySelector(`.btn-action-finish[data-id="${this.sesionActiva.loteId}"] .clock-span`);
+    if (btnActivoCard) {
+      btnActivoCard.textContent = texto;
+    }
+  }
+
+  /* ========================================================================
+     RENDERIZADO PRINCIPAL
+     ======================================================================== */
+
   renderizar() {
     const ahora = new Date();
 
-    // 1. Clasificar cada lote
+    // 1. Banner de Sesión Activa
+    if (this.sesionActiva) {
+      this.bannerSesionActiva.classList.remove('oculto');
+      this.activeSessionSuper.textContent = this.sesionActiva.supermercado;
+      this.activeSessionArea.textContent = `📍 ${this.sesionActiva.area}`;
+      this._actualizarDigitosCronometro();
+    } else {
+      this.bannerSesionActiva.classList.add('oculto');
+    }
+
+    // 2. Clasificar cada lote
     const listos = [];
     const proximos = [];
     const futuros = [];
@@ -199,20 +356,21 @@ class AppController {
       }
     });
 
-    // Ordenar listos: primero los acumulados más antiguos, luego los de hoy
+    // Ordenar listos: primero la sesión activa (si hay), luego acumulados más antiguos, luego hoy
     listos.sort((a, b) => {
+      if (this.sesionActiva) {
+        if (a.id === this.sesionActiva.loteId) return -1;
+        if (b.id === this.sesionActiva.loteId) return 1;
+      }
       const tA = a.proximoDesbloqueo ? new Date(a.proximoDesbloqueo).getTime() : 0;
       const tB = b.proximoDesbloqueo ? new Date(b.proximoDesbloqueo).getTime() : 0;
       return tA - tB;
     });
 
-    // Ordenar próximos por fecha de desbloqueo más cercana
     proximos.sort((a, b) => new Date(a.proximoDesbloqueo) - new Date(b.proximoDesbloqueo));
-
-    // Ordenar futuros por fecha
     futuros.sort((a, b) => new Date(a.proximoDesbloqueo) - new Date(b.proximoDesbloqueo));
 
-    // 2. Renderizar secciones
+    // 3. Renderizar secciones
     this._renderizarBannerAcumulados(cantidadAcumulados);
     this._renderizarListos(listos);
     this._renderizarProximos(proximos);
@@ -220,7 +378,7 @@ class AppController {
     this._renderizarHistorialYHoras();
     this._actualizarDatalists();
 
-    // 3. Actualizar contadores
+    // 4. Actualizar contadores
     this.badgeCountListos.textContent = listos.length;
     this.badgeCountProximos.textContent = proximos.length;
     this.badgeCountFuturos.textContent = futuros.length;
@@ -272,8 +430,12 @@ class AppController {
     }
 
     this.listaListos.innerHTML = listos.map(lote => {
+      const esActivo = this.sesionActiva && this.sesionActiva.loteId === lote.id;
       const esAcumulado = lote.info.esAcumulado;
-      const claseCard = esAcumulado ? 'card-accumulated' : 'card-ready';
+
+      let claseCard = esAcumulado ? 'card-accumulated' : 'card-ready';
+      if (esActivo) claseCard = 'card-active-session';
+
       const claseBadge = esAcumulado ? 'badge-accumulated' : 'badge-ready';
       const iconoBadge = esAcumulado ? '⚠️' : '✅';
 
@@ -284,9 +446,13 @@ class AppController {
               <h3 class="card-supermercado">${lote.supermercado}</h3>
               <p class="card-area">📍 ${lote.area}</p>
             </div>
-            <span class="card-badge ${claseBadge}">
-              ${iconoBadge} ${lote.info.etiqueta}
-            </span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="card-badge ${claseBadge}">
+                ${esActivo ? '⏱️ EN CURSO' : `${iconoBadge} ${lote.info.etiqueta}`}
+              </span>
+              <button class="btn-icon" data-accion="editar-lote" data-id="${lote.id}" title="Editar lote">✏️</button>
+              <button class="btn-icon btn-icon-danger" data-accion="eliminar-lote" data-id="${lote.id}" title="Eliminar lote">🗑️</button>
+            </div>
           </div>
 
           <div class="card-meta">
@@ -298,19 +464,47 @@ class AppController {
           ${lote.notas ? `<p class="card-subtitulo"><em>"${lote.notas}"</em></p>` : ''}
 
           <div class="card-actions">
-            <button class="btn btn-sm btn-action-start" data-accion="fotografiar" data-id="${lote.id}">
-              📸 Iniciar / Completar Fotos
-            </button>
+            ${esActivo ? `
+              <button class="btn btn-action-finish" data-accion="terminar-sesion" data-id="${lote.id}">
+                ⏹️ Terminar Fotos (<span class="clock-span">00:00</span>)
+              </button>
+            ` : `
+              <button class="btn btn-action-start" data-accion="iniciar-trabajo" data-id="${lote.id}">
+                ▶️ Iniciar Fotos
+              </button>
+            `}
           </div>
         </article>
       `;
     }).join('');
 
-    // Delegación de eventos para botones de iniciar sesión
-    this.listaListos.querySelectorAll('[data-accion="fotografiar"]').forEach(btn => {
+    // Eventos de botones
+    this.listaListos.querySelectorAll('[data-accion="iniciar-trabajo"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = e.currentTarget.dataset.id;
-        this.abrirModalSesion(id);
+        this.iniciarTrabajoLote(id);
+      });
+    });
+
+    this.listaListos.querySelectorAll('[data-accion="terminar-sesion"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.terminarSesionActiva();
+      });
+    });
+
+    this.listaListos.querySelectorAll('[data-accion="editar-lote"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = e.currentTarget.dataset.id;
+        this.abrirModalLote(id);
+      });
+    });
+
+    this.listaListos.querySelectorAll('[data-accion="eliminar-lote"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = e.currentTarget.dataset.id;
+        this.eliminarLote(id);
       });
     });
   }
@@ -325,7 +519,6 @@ class AppController {
       return;
     }
 
-    // Agrupar por día (YYYY-MM-DD)
     const grupos = new Map();
     proximos.forEach(lote => {
       const key = claveDia(lote.proximoDesbloqueo);
@@ -336,7 +529,7 @@ class AppController {
     });
 
     let html = '';
-    grupos.forEach((lotesDelDia, fechaKey) => {
+    grupos.forEach((lotesDelDia) => {
       const fechaObj = new Date(lotesDelDia[0].proximoDesbloqueo);
       const nombreDia = obtenerNombreDia(fechaObj);
       const fechaCorta = formatearFechaCorta(fechaObj);
@@ -349,18 +542,22 @@ class AppController {
           </div>
           <div class="day-items">
             ${lotesDelDia.map(lote => `
-              <article class="lote-card card-upcoming">
+              <article class="lote-card card-upcoming card-clickable" data-accion="ver-detalle" data-id="${lote.id}">
                 <div class="card-top">
                   <div>
                     <h4 class="card-supermercado">${lote.supermercado}</h4>
                     <p class="card-area">📍 ${lote.area}</p>
                   </div>
-                  <span class="card-badge badge-upcoming">
-                    🔓 Desbloquea ${formatearHora(lote.proximoDesbloqueo)}
-                  </span>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span class="card-badge badge-upcoming">
+                      🔓 ${formatearHora(lote.proximoDesbloqueo)}
+                    </span>
+                    <button class="btn-icon" data-accion="editar-lote" data-id="${lote.id}" title="Editar">✏️</button>
+                    <button class="btn-icon btn-icon-danger" data-accion="eliminar-lote" data-id="${lote.id}" title="Eliminar">🗑️</button>
+                  </div>
                 </div>
                 <div class="card-meta">
-                  <span class="meta-item">📦 ${lote.cantidadProductos || 0} productos</span>
+                  <span class="meta-item">📦 ${lote.cantidadProductos || 0} prods</span>
                   <span class="meta-item">⏳ ${lote.info.etiqueta}</span>
                 </div>
               </article>
@@ -371,6 +568,7 @@ class AppController {
     });
 
     this.listaProximos.innerHTML = html;
+    this._vincularEventosCards(this.listaProximos);
   }
 
   _renderizarFuturos(futuros) {
@@ -382,17 +580,52 @@ class AppController {
     }
 
     this.listaFuturos.innerHTML = futuros.map(lote => `
-      <article class="lote-card">
+      <article class="lote-card card-clickable" data-accion="ver-detalle" data-id="${lote.id}">
         <div class="card-top">
           <div>
             <h4 class="card-supermercado">${lote.supermercado}</h4>
             <p class="card-area">📍 ${lote.area}</p>
           </div>
-          <span class="card-badge badge-future">${lote.info.etiqueta}</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="card-badge badge-future">${lote.info.etiqueta}</span>
+            <button class="btn-icon" data-accion="editar-lote" data-id="${lote.id}" title="Editar">✏️</button>
+            <button class="btn-icon btn-icon-danger" data-accion="eliminar-lote" data-id="${lote.id}" title="Eliminar">🗑️</button>
+          </div>
         </div>
         <p class="card-subtitulo">${lote.info.subtitulo}</p>
       </article>
     `).join('');
+
+    this._vincularEventosCards(this.listaFuturos);
+  }
+
+  _vincularEventosCards(contenedor) {
+    contenedor.querySelectorAll('[data-accion="ver-detalle"]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Evitar activar detalle si tocó en botones de editar o eliminar
+        if (e.target.closest('[data-accion="editar-lote"]') || e.target.closest('[data-accion="eliminar-lote"]')) {
+          return;
+        }
+        const id = card.dataset.id;
+        this.abrirModalDetalleLote(id);
+      });
+    });
+
+    contenedor.querySelectorAll('[data-accion="editar-lote"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = e.currentTarget.dataset.id;
+        this.abrirModalLote(id);
+      });
+    });
+
+    contenedor.querySelectorAll('[data-accion="eliminar-lote"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = e.currentTarget.dataset.id;
+        this.eliminarLote(id);
+      });
+    });
   }
 
   _renderizarHistorialYHoras() {
@@ -401,31 +634,22 @@ class AppController {
     let minsSemana = 0;
     let minsMes = 0;
 
-    // Calcular inicio de semana (Lunes a las 00:00)
     const inicioSemana = new Date(ahora);
-    const diaSemana = (ahora.getDay() + 6) % 7; // Lunes = 0
+    const diaSemana = (ahora.getDay() + 6) % 7;
     inicioSemana.setDate(ahora.getDate() - diaSemana);
     inicioSemana.setHours(0, 0, 0, 0);
 
-    // Calcular inicio de mes
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1, 0, 0, 0, 0);
 
     this.registros.forEach(r => {
       const fInicio = new Date(r.fechaHoraInicio);
       const mins = r.duracionMinutos || 0;
 
-      if (esMismoDia(fInicio, ahora)) {
-        minsHoy += mins;
-      }
-      if (fInicio >= inicioSemana) {
-        minsSemana += mins;
-      }
-      if (fInicio >= inicioMes) {
-        minsMes += mins;
-      }
+      if (esMismoDia(fInicio, ahora)) minsHoy += mins;
+      if (fInicio >= inicioSemana) minsSemana += mins;
+      if (fInicio >= inicioMes) minsMes += mins;
     });
 
-    // Formatear tiempos
     const formatearMinutos = (m) => {
       const h = Math.floor(m / 60);
       const resto = m % 60;
@@ -439,7 +663,6 @@ class AppController {
     const nombresMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     this.horasMesNombre.textContent = nombresMeses[ahora.getMonth()];
 
-    // Lista del historial
     this.badgeCountHistorial.textContent = this.registros.length;
     if (this.registros.length === 0) {
       this.listaHistorial.innerHTML = `
@@ -455,45 +678,132 @@ class AppController {
           <span>📍 ${r.area} · 📦 ${r.cantidadProductos || 0} prods</span>
           <div class="history-date">${formatearFechaHora(r.fechaHoraInicio)}</div>
         </div>
-        <div class="history-duration">
-          <span class="history-badge">${r.duracionTexto || `${r.duracionMinutos}m`}</span>
-          <span class="history-date">Desbloquea en 120d</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="history-duration">
+            <span class="history-badge">${r.duracionTexto || `${r.duracionMinutos}m`}</span>
+            <span class="history-date">Desbloquea en 120d</span>
+          </div>
+          <button class="btn-icon btn-icon-danger" data-accion="eliminar-registro" data-id="${r.id}" title="Eliminar registro">🗑️</button>
         </div>
       </div>
     `).join('');
+
+    this.listaHistorial.querySelectorAll('[data-accion="eliminar-registro"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.dataset.id;
+        this.eliminarRegistroHistorial(id);
+      });
+    });
   }
 
-  abrirModalSesion(loteId = null) {
+  /* ========================================================================
+     FICHA DETALLADA DE LOTE (INTERACCIÓN PARA LOTES FUTUROS)
+     ======================================================================== */
+
+  abrirModalDetalleLote(loteId) {
+    const lote = this.lotes.find(l => l.id === loteId);
+    if (!lote) return;
+
+    this.loteSeleccionadoDetalle = lote;
     const ahora = new Date();
-    const lote = loteId ? this.lotes.find(l => l.id === loteId) : null;
+    const info = clasificarEstadoLote(lote, ahora);
 
-    this.inputSesionLoteId.value = lote ? lote.id : '';
-    this.inputSesionSupermercado.value = lote ? lote.supermercado : '';
-    this.inputSesionArea.value = lote ? lote.area : '';
-    this.inputSesionProductos.value = lote ? (lote.cantidadProductos || '') : '';
-    this.inputSesionObs.value = '';
+    this.detalleTitulo.textContent = lote.supermercado;
+    this.detalleSubtitulo.textContent = `📍 ${lote.area}`;
+    this.detalleCountdownValor.textContent = info.etiqueta;
+    this.detalleFechaExacta.textContent = lote.proximoDesbloqueo
+      ? `Desbloquea el ${formatearFechaCorta(lote.proximoDesbloqueo)} a las ${formatearHora(lote.proximoDesbloqueo)}`
+      : 'Disponible de inmediato';
 
-    // Fechas por defecto: inicio hace 45 minutos (o ahora), fin ahora mismo
-    const finPorDefecto = ahora;
-    const duracionDefaultMins = (lote && lote.duracionMinutos) ? lote.duracionMinutos : 45;
-    const inicioPorDefecto = new Date(ahora.getTime() - (duracionDefaultMins * 60 * 1000));
+    this.detalleSupermercado.textContent = lote.supermercado;
+    this.detalleArea.textContent = lote.area;
+    this.detalleProductos.textContent = `${lote.cantidadProductos || 0} productos`;
+    this.detalleUltimaDuracion.textContent = lote.duracionMinutos
+      ? `${lote.duracionMinutos} minutos`
+      : 'Sin datos previos';
 
-    this.inputSesionInicio.value = aInputDateTimeLocal(inicioPorDefecto);
-    this.inputSesionFin.value = aInputDateTimeLocal(finPorDefecto);
+    if (lote.notas) {
+      this.detalleNotasWrapper.classList.remove('oculto');
+      this.detalleNotasTexto.textContent = `"${lote.notas}"`;
+    } else {
+      this.detalleNotasWrapper.classList.add('oculto');
+    }
 
-    this.actualizarCalculoEnVivo();
-    this.modalSesion.classList.remove('oculto');
+    this.modalDetalleLote.classList.remove('oculto');
   }
 
-  abrirModalLote() {
+  async adelantarLoteSeleccionado() {
+    if (!this.loteSeleccionadoDetalle) return;
+    const { supermercado, area, id } = this.loteSeleccionadoDetalle;
+
+    if (confirm(`¿Deseas habilitar "${supermercado} - ${area}" para fotografiar HOY?`)) {
+      try {
+        await this.storage.adelantarLote(id);
+        this.cerrarModales();
+        await this.cargarDatos();
+      } catch (err) {
+        alert('Error al adelantar lote: ' + err.message);
+      }
+    }
+  }
+
+  /* ========================================================================
+     MODALES: EDICIÓN, CREACIÓN Y ELIMINACIÓN
+     ======================================================================== */
+
+  abrirModalLote(loteId = null) {
     this.formLote.reset();
-    document.getElementById('lote-id').value = '';
+
+    if (loteId) {
+      const lote = this.lotes.find(l => l.id === loteId);
+      if (!lote) return;
+
+      this.modalLoteTitulo.textContent = 'Editar Lote de Trabajo';
+      document.getElementById('lote-id').value = lote.id;
+      document.getElementById('lote-supermercado').value = lote.supermercado;
+      document.getElementById('lote-area').value = lote.area;
+      document.getElementById('lote-productos').value = lote.cantidadProductos || '';
+      document.getElementById('lote-ultimo-inicio').value = lote.ultimoInicio ? aInputDateTimeLocal(lote.ultimoInicio) : '';
+      document.getElementById('lote-notas').value = lote.notas || '';
+    } else {
+      this.modalLoteTitulo.textContent = 'Nuevo Lote de Trabajo';
+      document.getElementById('lote-id').value = '';
+    }
+
     this.modalLote.classList.remove('oculto');
+  }
+
+  async eliminarLote(loteId) {
+    const lote = this.lotes.find(l => l.id === loteId);
+    if (!lote) return;
+
+    if (confirm(`¿Estás seguro de que deseas eliminar "${lote.supermercado} - ${lote.area}"?`)) {
+      try {
+        await this.storage.eliminarLote(loteId);
+        this.cerrarModales();
+        await this.cargarDatos();
+      } catch (err) {
+        alert('Error al eliminar lote: ' + err.message);
+      }
+    }
+  }
+
+  async eliminarRegistroHistorial(registroId) {
+    if (confirm('¿Deseas eliminar este registro de trabajo del historial?')) {
+      try {
+        await this.storage.eliminarRegistro(registroId);
+        await this.cargarDatos();
+      } catch (err) {
+        alert('Error al eliminar registro: ' + err.message);
+      }
+    }
   }
 
   cerrarModales() {
     this.modalSesion.classList.add('oculto');
     this.modalLote.classList.add('oculto');
+    this.modalDetalleLote.classList.add('oculto');
+    this.loteSeleccionadoDetalle = null;
   }
 
   aplicarDuracionRapida(minutos) {
@@ -547,6 +857,10 @@ class AppController {
         fechaHoraFin: fin,
         observaciones
       });
+
+      this._detenerTickerSegundo();
+      this.sesionActiva = null;
+      await this.storage.limpiarSesionActiva();
 
       this.cerrarModales();
       await this.cargarDatos();

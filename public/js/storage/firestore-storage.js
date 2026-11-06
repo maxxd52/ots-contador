@@ -179,4 +179,51 @@ export class FirestoreAdapter extends StorageInterface {
 
     return { lote: loteActual, registro };
   }
+
+  async eliminarRegistro(id) {
+    await this._init();
+    const { doc, deleteDoc } = this._firestore;
+    const ref = doc(this.db, 'registros_trabajo', id);
+    await deleteDoc(ref);
+    return true;
+  }
+
+  async adelantarLote(id) {
+    await this._init();
+    const { doc, setDoc } = this._firestore;
+    const ref = doc(this.db, 'lotes', id);
+    const payload = {
+      proximoDesbloqueo: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(ref, payload, { merge: true });
+    return { id, ...payload };
+  }
+
+  async obtenerSesionActiva() {
+    try {
+      const raw = localStorage.getItem('ots_sesion_activa_v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async guardarSesionActiva(sesion) {
+    try {
+      localStorage.setItem('ots_sesion_activa_v1', JSON.stringify(sesion));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async limpiarSesionActiva() {
+    try {
+      localStorage.removeItem('ots_sesion_activa_v1');
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

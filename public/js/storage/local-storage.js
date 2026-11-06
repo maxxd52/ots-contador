@@ -9,6 +9,7 @@ import { calcularProximoDesbloqueo, calcularHorasTrabajadas, MS_POR_DIA } from '
 
 const KEY_LOTES = 'ots_lotes_v1';
 const KEY_REGISTROS = 'ots_registros_v1';
+const KEY_SESION_ACTIVA = 'ots_sesion_activa_v1';
 
 export class LocalStorageAdapter extends StorageInterface {
   constructor() {
@@ -208,7 +209,48 @@ export class LocalStorageAdapter extends StorageInterface {
     }
 
     this._guardar(KEY_LOTES, listaLotes);
+    await this.limpiarSesionActiva();
     return { lote: loteActualizado, registro };
+  }
+
+  async eliminarRegistro(id) {
+    const lista = this._leer(KEY_REGISTROS, []);
+    const filtrada = lista.filter(item => item.id !== id);
+    this._guardar(KEY_REGISTROS, filtrada);
+    return true;
+  }
+
+  async adelantarLote(id) {
+    const lista = this._leer(KEY_LOTES, []);
+    const idx = lista.findIndex(item => item.id === id);
+    if (idx >= 0) {
+      lista[idx] = {
+        ...lista[idx],
+        proximoDesbloqueo: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this._guardar(KEY_LOTES, lista);
+      return lista[idx];
+    }
+    throw new Error('Lote no encontrado para adelantar');
+  }
+
+  async obtenerSesionActiva() {
+    return this._leer(KEY_SESION_ACTIVA, null);
+  }
+
+  async guardarSesionActiva(sesion) {
+    this._guardar(KEY_SESION_ACTIVA, sesion);
+    return true;
+  }
+
+  async limpiarSesionActiva() {
+    if (this._isBrowser()) {
+      window.localStorage.removeItem(KEY_SESION_ACTIVA);
+    } else {
+      this._memStore.delete(KEY_SESION_ACTIVA);
+    }
+    return true;
   }
 
   exportarBackup() {

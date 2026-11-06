@@ -23,7 +23,7 @@
         </div>
         <div class="header-actions">
           <span id="badge-backend" class="badge-backend" title="Modo de almacenamiento">Local</span>
-          <button id="btn-nuevo-lote" class="btn btn-secondary btn-sm" aria-label="Nueva Tienda" title="Dar de alta un nuevo supermercado o área en el catálogo">+ Nueva Tienda</button>
+          <button id="btn-nuevo-lote" class="btn btn-primary btn-sm" aria-label="Nuevo Lote" title="Crear un nuevo lote de trabajo">+ Nuevo Lote</button>
         </div>
       </div>
 
@@ -56,6 +56,25 @@
 
     <!-- Contenido Principal -->
     <main class="app-content">
+      <!-- Banner Flotante de Sesión Activa / Cronómetro en Vivo -->
+      <aside id="banner-sesion-activa" class="active-session-banner oculto" role="status" aria-live="polite">
+        <div class="active-session-info">
+          <span class="active-pulse-dot"></span>
+          <div>
+            <strong id="active-session-super">Carrefour San Martín</strong>
+            <span id="active-session-area">📍 Lácteos</span>
+          </div>
+        </div>
+        <div class="active-session-timer">
+          <span id="active-session-clock" class="active-clock-digits">00:00</span>
+          <span class="active-clock-label">en curso</span>
+        </div>
+        <div class="active-session-actions">
+          <button id="btn-completar-sesion-activa" class="btn btn-sm btn-action-finish">⏹️ Terminar</button>
+          <button id="btn-cancelar-sesion-activa" class="btn btn-sm btn-secondary" title="Descartar sesión">✖️</button>
+        </div>
+      </aside>
+
       <!-- PESTAÑA 1: TABLERO & ITINERARIO -->
       <div id="view-tablero" class="tab-view active">
         <!-- Banner de Acumulados de Días Anteriores (si hay) -->
@@ -139,11 +158,67 @@
       </div>
     </main>
 
-    <!-- Botón Flotante para Registro Rápido -->
-    <button id="fab-completar" class="fab-btn" aria-label="Registrar Sesión de Trabajo">
-      <span class="fab-icon">📸</span>
-      <span class="fab-text">Registrar Sesión</span>
-    </button>
+    <!-- MODAL: FICHA DETALLADA DE LOTE (INTERACCIÓN PARA LOTES FUTUROS Y GESTIÓN) -->
+    <div id="modal-detalle-lote" class="modal-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="detalle-titulo">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3 id="detalle-titulo" class="modal-title">Detalle del Lote</h3>
+            <span id="detalle-subtitulo" class="card-area"></span>
+          </div>
+          <button class="modal-close" id="btn-cerrar-modal-detalle" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <div class="detail-content">
+          <!-- Countdown Card -->
+          <div class="detail-countdown-card">
+            <span class="detail-countdown-label">Estado de Desbloqueo</span>
+            <div id="detalle-countdown-valor" class="detail-countdown-val">En 48 días</div>
+            <div id="detalle-fecha-exacta" class="detail-countdown-sub">Desbloquea el 25/12/2026 a las 22:04</div>
+          </div>
+
+          <!-- Info Grid -->
+          <div class="detail-info-grid">
+            <div class="detail-info-item">
+              <span class="info-label">Supermercado</span>
+              <strong id="detalle-supermercado" class="info-val">-</strong>
+            </div>
+            <div class="detail-info-item">
+              <span class="info-label">Área / Sector</span>
+              <strong id="detalle-area" class="info-val">-</strong>
+            </div>
+            <div class="detail-info-item">
+              <span class="info-label">Cantidad Productos</span>
+              <strong id="detalle-productos" class="info-val">0</strong>
+            </div>
+            <div class="detail-info-item">
+              <span class="info-label">Última Sesión</span>
+              <strong id="detalle-ultima-duracion" class="info-val">-</strong>
+            </div>
+          </div>
+
+          <div id="detalle-notas-wrapper" class="detail-notas-box oculto">
+            <span class="info-label">Notas / Instrucciones:</span>
+            <p id="detalle-notas-texto" class="detail-notas-text"></p>
+          </div>
+
+          <!-- Acciones del Lote -->
+          <div class="detail-actions-block">
+            <button id="btn-adelantar-lote" class="btn btn-primary btn-block">
+              ⚡ Habilitar / Desbloquear Hoy
+            </button>
+            <div class="detail-secondary-actions">
+              <button id="btn-editar-desde-detalle" class="btn btn-secondary flex-1">
+                ✏️ Editar Lote
+              </button>
+              <button id="btn-eliminar-desde-detalle" class="btn btn-danger-soft flex-1">
+                🗑️ Eliminar Lote
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL 1: REGISTRAR SESIÓN DE FOTOS (REINICIA CICLO 120 DÍAS & CUENTA HORAS) -->
     <div id="modal-sesion" class="modal-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="modal-sesion-titulo">

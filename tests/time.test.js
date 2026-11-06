@@ -10,7 +10,8 @@ import {
   normalizarFecha,
   esMismoDia,
   aInputDateTimeLocal,
-  claveDia
+  claveDia,
+  formatearCronometro
 } from '../public/js/domain/time.js';
 
 test('calcularProximoDesbloqueo - suma exactamente 120 días calendario y preserva la hora exacta', () => {
@@ -107,3 +108,10 @@ test('normalizarFecha y utilidades de formato', () => {
   assert.equal(claveDia(fecha), '2026-11-05');
   assert.equal(aInputDateTimeLocal(fecha), '2026-11-05T09:15');
 });
+
+test('formatearCronometro - formatea MM:SS y HH:MM:SS', () => {
+  assert.equal(formatearCronometro(0), '00:00');
+  assert.equal(formatearCronometro(65), '01:05');
+  assert.equal(formatearCronometro(3665), '01:01:05');
+});
+

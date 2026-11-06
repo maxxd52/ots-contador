@@ -49,4 +49,47 @@ export class StorageInterface {
   async registrarSesionTrabajo(datosSesion) {
     throw new Error('Método registrarSesionTrabajo() no implementado');
   }
+
+  /**
+   * Elimina un registro de trabajo del historial.
+   * @param {string} id
+   * @returns {Promise<boolean>}
+   */
+  async eliminarRegistro(id) {
+    throw new Error('Método eliminarRegistro() no implementado');
+  }
+
+  /**
+   * Fuerza el desbloqueo inmediato de un lote fijando su fecha a ahora.
+   * @param {string} id
+   * @returns {Promise<Object>}
+   */
+  async adelantarLote(id) {
+    throw new Error('Método adelantarLote() no implementado');
+  }
+
+  /**
+   * Obtiene la sesión de trabajo actualmente en curso (si existe).
+   * @returns {Promise<Object|null>}
+   */
+  async obtenerSesionActiva() {
+    throw new Error('Método obtenerSesionActiva() no implementado');
+  }
+
+  /**
+   * Persiste la sesión en curso para resistir recargas o cierres de navegador.
+   * @param {Object} sesion
+   * @returns {Promise<boolean>}
+   */
+  async guardarSesionActiva(sesion) {
+    throw new Error('Método guardarSesionActiva() no implementado');
+  }
+
+  /**
+   * Limpia la sesión en curso una vez completada o cancelada.
+   * @returns {Promise<boolean>}
+   */
+  async limpiarSesionActiva() {
+    throw new Error('Método limpiarSesionActiva() no implementado');
+  }
 }

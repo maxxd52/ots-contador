@@ -243,6 +243,25 @@ export function obtenerNombreDia(fecha) {
 }
 
 /**
+ * Formatea segundos totales a formato de cronómetro: "MM:SS" o "HH:MM:SS"
+ */
+export function formatearCronometro(segundosTotales) {
+  const segs = Math.max(0, Math.floor(segundosTotales));
+  const horas = Math.floor(segs / 3600);
+  const minutos = Math.floor((segs % 3600) / 60);
+  const segundos = segs % 60;
+
+  const mStr = String(minutos).padStart(2, '0');
+  const sStr = String(segundos).padStart(2, '0');
+
+  if (horas > 0) {
+    const hStr = String(horas).padStart(2, '0');
+    return `${hStr}:${mStr}:${sStr}`;
+  }
+  return `${mStr}:${sStr}`;
+}
+
+/**
  * Genera el valor datetime-local para inputs HTML: 'YYYY-MM-DDTHH:MM'
  */
 export function aInputDateTimeLocal(fecha = new Date()) {
