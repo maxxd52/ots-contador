@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "689987404314",
+    "project_id": "ots-contador",
+    "storage_bucket": "ots-contador.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689987404314:android:ccdbbf44dc257df45d47a3",
+        "android_client_info": {
+          "package_name": "com.ots120.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDv392sQbMsLL7dp1Gmp3u8jXW8YunKzTU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

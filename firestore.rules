@@ -1,43 +1,39 @@
 rules_version = '2';
 
 // ===============================================================
-// Firestore Security Rules: Contador de Horas OTS (120 Días)
+// Firestore Security Rules: Contador de Horas OTS
 // ===============================================================
 //
 // Assumed Data Model:
 // -------------------
 // Collection: lotes
-// Document ID: {loteId} (UUID or string ID matching request.resource.data.id)
+// Document ID: {loteId}
 // Fields:
-//   - id: string (required, 1-128 chars, immutable) - Unique lot identifier
-//   - supermercado: string (required, 1-100 chars) - Retail chain / store name
-//   - area: string (required, 1-100 chars) - Store department / section
-//   - cantidadProductos: number (required, int >= 0 and <= 100000) - Product count
-//   - ultimoInicio: string | null (optional, ISO 8601 date, 19-35 chars) - Last session start
-//   - ultimoFin: string | null (optional, ISO 8601 date, 19-35 chars) - Last session end
-//   - duracionMinutos: number (optional, >= 0 and <= 14400) - Duration of last session in minutes
-//   - proximoDesbloqueo: string | null (optional, ISO 8601 date, 19-35 chars) - 120-day unlock timestamp
-//   - activo: bool (required) - Logical active status (false = soft-deleted)
-//   - notas: string (optional, 0-1000 chars) - Operator remarks or shelf instructions
-//   - createdAt: string (required, ISO 8601 date, 19-35 chars, immutable) - Creation timestamp
-//   - updatedAt: string (required, ISO 8601 date, 19-35 chars) - Modification timestamp
+//   - id: string (required, 1-128 chars, immutable, matches document id)
+//   - supermercado: string (required, 1-100 chars)
+//   - area: string (required, 1-100 chars)
+//   - cantidadProductos: int/number (required, >= 0 and <= 100000)
+//   - ultimoInicio: string | null (optional, ISO 8601 date, 19-35 chars)
+//   - proximoDesbloqueo: string | null (optional, ISO 8601 date, 19-35 chars)
+//   - notas: string | null (optional, 0-1000 chars)
+//   - creadoEn: string (required, ISO 8601 date, 19-35 chars, immutable)
 //
 // Collection: registros_trabajo
-// Document ID: {registroId} (Firestore auto-ID or client ID)
+// Document ID: {registroId}
 // Fields:
-//   - id: string (required, 1-128 chars) - Historical record ID
-//   - loteId: string | null (optional, 1-128 chars) - Reference to parent lote document
-//   - supermercado: string (required, 1-100 chars) - Supermarket name
-//   - area: string (required, 1-100 chars) - Department or section
-//   - cantidadProductos: number (required, >= 0 and <= 100000) - Photographed product count
-//   - fechaHoraInicio: string (required, ISO 8601 date, 19-35 chars) - Session start timestamp
-//   - fechaHoraFin: string (required, ISO 8601 date, 19-35 chars) - Session finish timestamp
-//   - duracionMinutos: number (required, >= 0 and <= 14400) - Duration in minutes
-//   - horasDecimal: number (required, >= 0 and <= 240) - Duration in decimal hours
-//   - duracionTexto: string (required, 1-50 chars) - Formatted human-readable duration (e.g., "1h 30m")
-//   - desbloqueoCalculado: string (required, ISO 8601 date, 19-35 chars) - 120-day unlock timestamp
-//   - observaciones: string (optional, 0-1000 chars) - Operator session observations
-//   - createdAt: string (required, ISO 8601 date, 19-35 chars) - Creation timestamp
+//   - id: string (required, 1-128 chars, immutable, matches document id)
+//   - loteId: string (required, 1-128 chars)
+//   - supermercado: string (required, 1-100 chars)
+//   - area: string (required, 1-100 chars)
+//   - cantidadProductos: int/number (required, >= 0 and <= 100000)
+//   - inicio: string (required, ISO 8601 date, 19-35 chars)
+//   - fin: string (required, ISO 8601 date, 19-35 chars)
+//   - duracionMinutos: int/number (required, >= 0 and <= 14400)
+//   - horasDecimales: number (required, >= 0 and <= 240)
+//   - duracionTexto: string (required, 1-50 chars)
+//   - nuevoDesbloqueo: string (required, ISO 8601 date, 19-35 chars)
+//   - observaciones: string | null (optional, 0-1000 chars)
+//   - creadoEn: string (required, ISO 8601 date, 19-35 chars, immutable)
 //
 // ===============================================================
 
@@ -48,58 +44,17 @@ service cloud.firestore {
     // Helper Functions
     // ===============================================================
 
-    // Check if the user is authenticated with Firebase Auth
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Check if user owns the resource (for user-scoped paths)
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Check if user is owner based on document's uid field
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.uid;
-    }
-
-    // Verify UID hasn't been tampered with on create
-    function uidUnchanged() {
-      return !('uid' in request.resource.data) ||
-        (isAuthenticated() && request.resource.data.uid == request.auth.uid);
-    }
-
-    // Ensure uid field is not modified on update
-    function uidNotModified() {
-      return !('uid' in request.resource.data) ||
-        request.resource.data.uid == resource.data.uid;
-    }
-
-    // Operator authorization for single-user field application:
-    // Configured for field operator access without mandatory Firebase Auth initially,
-    // and ready to be locked to authenticated operators when Auth credentials are configured.
-    function isOperator() {
-      return true;
-      // To require Firebase Auth login in production, toggle to:
-      // return isAuthenticated();
-    }
-
-    // Validate required fields exist in incoming data
+    // Validate that required fields exist in the incoming data
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
 
-    // Validate that the document contains only the allowed fields
+    // Validate that only defined fields exist in the incoming document
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
 
-    // Validate that immutable fields remain unchanged during update
-    function areImmutableFieldsUnchanged(fields) {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
-    }
-
-    // Validate ISO 8601 date string format (YYYY-MM-DDTHH:MM:SS...)
+    // Validate ISO 8601 string format (e.g., 2026-11-06T04:20:24.000Z)
     function isValidIsoDate(dateStr) {
       return dateStr is string &&
         dateStr.size() >= 19 &&
@@ -108,62 +63,53 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Domain Validators (Used in BOTH create and update)
+    // Domain Validators
     // ===============================================================
 
-    // Validator for 'lotes' collection
+    // Schema and boundary validator for 'lotes'
     function isValidLote(data) {
       return hasOnlyAllowedFields([
                'id', 'supermercado', 'area', 'cantidadProductos',
-               'ultimoInicio', 'ultimoFin', 'duracionMinutos',
-               'proximoDesbloqueo', 'activo', 'notas',
-               'createdAt', 'updatedAt'
+               'ultimoInicio', 'proximoDesbloqueo', 'notas', 'creadoEn'
              ]) &&
              hasRequiredFields([
-               'id', 'supermercado', 'area', 'cantidadProductos',
-               'activo', 'createdAt', 'updatedAt'
+               'id', 'supermercado', 'area', 'cantidadProductos', 'creadoEn'
              ]) &&
              data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
              data.supermercado is string && data.supermercado.size() >= 1 && data.supermercado.size() <= 100 &&
              data.area is string && data.area.size() >= 1 && data.area.size() <= 100 &&
              data.cantidadProductos is number && data.cantidadProductos >= 0 && data.cantidadProductos <= 100000 &&
-             data.activo is bool &&
-             isValidIsoDate(data.createdAt) &&
-             isValidIsoDate(data.updatedAt) &&
-             (!('duracionMinutos' in data) || (data.duracionMinutos is number && data.duracionMinutos >= 0 && data.duracionMinutos <= 14400)) &&
-             (!('notas' in data) || (data.notas is string && data.notas.size() <= 1000)) &&
+             isValidIsoDate(data.creadoEn) &&
              (!('ultimoInicio' in data) || data.ultimoInicio == null || isValidIsoDate(data.ultimoInicio)) &&
-             (!('ultimoFin' in data) || data.ultimoFin == null || isValidIsoDate(data.ultimoFin)) &&
-             (!('proximoDesbloqueo' in data) || data.proximoDesbloqueo == null || isValidIsoDate(data.proximoDesbloqueo));
+             (!('proximoDesbloqueo' in data) || data.proximoDesbloqueo == null || isValidIsoDate(data.proximoDesbloqueo)) &&
+             (!('notas' in data) || data.notas == null || (data.notas is string && data.notas.size() <= 1000));
     }
 
-    // Validator for 'registros_trabajo' collection
+    // Schema and boundary validator for 'registros_trabajo'
     function isValidRegistroTrabajo(data) {
       return hasOnlyAllowedFields([
                'id', 'loteId', 'supermercado', 'area', 'cantidadProductos',
-               'fechaHoraInicio', 'fechaHoraFin', 'duracionMinutos',
-               'horasDecimal', 'duracionTexto', 'desbloqueoCalculado',
-               'observaciones', 'createdAt'
+               'inicio', 'fin', 'duracionMinutos', 'horasDecimales',
+               'duracionTexto', 'nuevoDesbloqueo', 'observaciones', 'creadoEn'
              ]) &&
              hasRequiredFields([
-               'id', 'supermercado', 'area', 'cantidadProductos',
-               'fechaHoraInicio', 'fechaHoraFin', 'duracionMinutos',
-               'horasDecimal', 'duracionTexto', 'desbloqueoCalculado',
-               'createdAt'
+               'id', 'loteId', 'supermercado', 'area', 'cantidadProductos',
+               'inicio', 'fin', 'duracionMinutos', 'horasDecimales',
+               'duracionTexto', 'nuevoDesbloqueo', 'creadoEn'
              ]) &&
              data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
-             (!('loteId' in data) || data.loteId == null || (data.loteId is string && data.loteId.size() >= 1 && data.loteId.size() <= 128)) &&
+             data.loteId is string && data.loteId.size() >= 1 && data.loteId.size() <= 128 &&
              data.supermercado is string && data.supermercado.size() >= 1 && data.supermercado.size() <= 100 &&
              data.area is string && data.area.size() >= 1 && data.area.size() <= 100 &&
              data.cantidadProductos is number && data.cantidadProductos >= 0 && data.cantidadProductos <= 100000 &&
-             isValidIsoDate(data.fechaHoraInicio) &&
-             isValidIsoDate(data.fechaHoraFin) &&
+             isValidIsoDate(data.inicio) &&
+             isValidIsoDate(data.fin) &&
              data.duracionMinutos is number && data.duracionMinutos >= 0 && data.duracionMinutos <= 14400 &&
-             data.horasDecimal is number && data.horasDecimal >= 0 && data.horasDecimal <= 240 &&
+             data.horasDecimales is number && data.horasDecimales >= 0 && data.horasDecimales <= 240 &&
              data.duracionTexto is string && data.duracionTexto.size() >= 1 && data.duracionTexto.size() <= 50 &&
-             isValidIsoDate(data.desbloqueoCalculado) &&
-             (!('observaciones' in data) || (data.observaciones is string && data.observaciones.size() <= 1000)) &&
-             isValidIsoDate(data.createdAt);
+             isValidIsoDate(data.nuevoDesbloqueo) &&
+             isValidIsoDate(data.creadoEn) &&
+             (!('observaciones' in data) || data.observaciones == null || (data.observaciones is string && data.observaciones.size() <= 1000));
     }
 
     // ===============================================================
@@ -172,36 +118,32 @@ service cloud.firestore {
 
     // Collection: lotes
     match /lotes/{loteId} {
-      // Allows field operator to read active/all lotes
-      allow read: if isOperator();
+      allow read: if true;
 
-      // Create: Validates full schema, ensures document ID matches data.id
-      allow create: if isOperator() &&
-                       isValidLote(request.resource.data) &&
+      allow create: if isValidLote(request.resource.data) &&
                        request.resource.data.id == loteId;
 
-      // Update: Validates full schema and guarantees immutability of ID and createdAt
-      allow update: if isOperator() &&
-                       isValidLote(request.resource.data) &&
+      allow update: if isValidLote(request.resource.data) &&
                        request.resource.data.id == resource.data.id &&
-                       request.resource.data.createdAt == resource.data.createdAt;
+                       request.resource.data.id == loteId &&
+                       request.resource.data.creadoEn == resource.data.creadoEn;
 
-      // Hard deletion is prohibited; soft delete is enforced via active: false in update
-      allow delete: if false;
+      allow delete: if true;
     }
 
     // Collection: registros_trabajo
     match /registros_trabajo/{registroId} {
-      // Allows field operator to read session records and work history
-      allow read: if isOperator();
+      allow read: if true;
 
-      // Create: Validates all session fields and timestamps
-      allow create: if isOperator() &&
-                       isValidRegistroTrabajo(request.resource.data);
+      allow create: if isValidRegistroTrabajo(request.resource.data) &&
+                       request.resource.data.id == registroId;
 
-      // Historical records are strictly immutable and permanent
-      allow update: if false;
-      allow delete: if false;
+      allow update: if isValidRegistroTrabajo(request.resource.data) &&
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.id == registroId &&
+                       request.resource.data.creadoEn == resource.data.creadoEn;
+
+      allow delete: if true;
     }
   }
 }
