@@ -1,0 +1,12 @@
+{
+  "name": "contador-horas-ots",
+  "version": "1.0.0",
+  "description": "Contador de horas OTS y planificador de fotoperiodos de 120 días para supermercados",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": ["ots", "retail", "supermercados", "horas", "120-dias", "firebase"],
+  "author": "",
+  "license": "ISC"
+}

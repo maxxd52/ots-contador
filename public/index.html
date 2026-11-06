@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Contador de horas OTS y planificador de fotoperiodos de 120 días para reposición en supermercados">
+  <title>OTS 120 Días - Planificador & Horas</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header / Barra Superior -->
+    <header class="app-header">
+      <div class="header-main">
+        <div>
+          <h1 class="app-title">OTS 120 Días</h1>
+          <p class="app-subtitle">Fotoperiodos & Horas en Supermercados</p>
+        </div>
+        <div class="header-actions">
+          <span id="badge-backend" class="badge-backend" title="Modo de almacenamiento">Local</span>
+          <button id="btn-nuevo-lote" class="btn btn-secondary btn-sm" aria-label="Nuevo Lote">+ Lote</button>
+        </div>
+      </div>
+
+      <!-- Barra de Estadísticas Rápidas -->
+      <section class="stats-strip" aria-label="Resumen de jornada">
+        <div class="stat-card">
+          <span class="stat-label">Horas Hoy</span>
+          <span id="stat-horas-hoy" class="stat-value">0h 0m</span>
+        </div>
+        <div class="stat-card stat-accent">
+          <span class="stat-label">Listos Hoy</span>
+          <span id="stat-listos" class="stat-value">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Próximos 7d</span>
+          <span id="stat-proximos" class="stat-value">0</span>
+        </div>
+      </section>
+
+      <!-- Selector de Pestañas Principales -->
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="tablero">
+          <span class="tab-icon">📋</span> Tablero & Itinerario
+        </button>
+        <button class="tab-btn" data-tab="historial">
+          <span class="tab-icon">⏱️</span> Historial & Horas
+        </button>
+      </nav>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="app-content">
+      <!-- PESTAÑA 1: TABLERO & ITINERARIO -->
+      <div id="view-tablero" class="tab-view active">
+        <!-- Banner de Acumulados de Días Anteriores (si hay) -->
+        <div id="banner-acumulados" class="banner-aviso oculto" role="alert">
+          <span class="banner-icono">⚡</span>
+          <div class="banner-texto">
+            <strong>Tareas pendientes acumuladas</strong>
+            <p id="banner-acumulados-desc">Tienes lotes habilitados en días no trabajados o fines de semana listos para fotografiar.</p>
+          </div>
+        </div>
+
+        <!-- Sección: Listos para Fotografiar (Hoy + Acumulados) -->
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="indicator-dot dot-ready"></span> Listos para Fotografiar
+            </h2>
+            <span id="badge-count-listos" class="count-pill">0</span>
+          </div>
+          <p class="section-description">Lotes cuyo ciclo de 120 días ya se cumplió. Listos para iniciar fotos hoy.</p>
+          <div id="lista-listos" class="cards-grid">
+            <!-- Se llena dinámicamente con JS -->
+          </div>
+        </section>
+
+        <!-- Sección: Itinerario Próximos 7 Días -->
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="indicator-dot dot-upcoming"></span> Itinerario Próximos 7 Días
+            </h2>
+            <span id="badge-count-proximos" class="count-pill">0</span>
+          </div>
+          <p class="section-description">Lotes que se desbloquearán durante la próxima semana con su hora exacta.</p>
+          <div id="lista-proximos" class="itinerary-timeline">
+            <!-- Se llena dinámicamente con JS -->
+          </div>
+        </section>
+
+        <!-- Sección: Lotes a más de 7 días (Colapsable) -->
+        <details class="section-details">
+          <summary class="details-summary">
+            <span>📅 Ver lotes con desbloqueo a más de 7 días</span>
+            <span id="badge-count-futuros" class="count-pill count-muted">0</span>
+          </summary>
+          <div id="lista-futuros" class="cards-grid mt-2">
+            <!-- Se llena dinámicamente con JS -->
+          </div>
+        </details>
+      </div>
+
+      <!-- PESTAÑA 2: HISTORIAL & CONTADOR DE HORAS -->
+      <div id="view-historial" class="tab-view">
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">Resumen de Horas OTS</h2>
+          </div>
+          <div class="hours-summary-grid">
+            <div class="hour-card">
+              <span class="hour-label">Esta Semana</span>
+              <span id="horas-semana" class="hour-value">0h 0m</span>
+              <span class="hour-sub">Lunes a Domingo</span>
+            </div>
+            <div class="hour-card">
+              <span class="hour-label">Este Mes</span>
+              <span id="horas-mes" class="hour-value">0h 0m</span>
+              <span class="hour-sub" id="horas-mes-nombre">Mes actual</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">Historial de Sesiones Registradas</h2>
+            <span id="badge-count-historial" class="count-pill">0</span>
+          </div>
+          <div id="lista-historial" class="history-list">
+            <!-- Se llena dinámicamente con JS -->
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Botón Flotante para Registro Rápido -->
+    <button id="fab-completar" class="fab-btn" aria-label="Registrar Sesión de Trabajo">
+      <span class="fab-icon">📸</span>
+      <span class="fab-text">Registrar Sesión</span>
+    </button>
+
+    <!-- MODAL 1: REGISTRAR SESIÓN DE FOTOS (REINICIA CICLO 120 DÍAS & CUENTA HORAS) -->
+    <div id="modal-sesion" class="modal-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="modal-sesion-titulo">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-sesion-titulo" class="modal-title">Registrar Sesión de Fotos</h3>
+          <button class="modal-close" id="btn-cerrar-modal-sesion" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <form id="form-sesion" class="modal-form">
+          <input type="hidden" id="sesion-lote-id">
+
+          <div class="form-group">
+            <label for="sesion-supermercado">Supermercado *</label>
+            <input type="text" id="sesion-supermercado" required placeholder="Ej: Carrefour San Martín" autocomplete="off">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="sesion-area">Área / Sector *</label>
+              <input type="text" id="sesion-area" required placeholder="Ej: Lácteos" autocomplete="off">
+            </div>
+            <div class="form-group flex-1">
+              <label for="sesion-productos">Cant. Productos</label>
+              <input type="number" id="sesion-productos" min="0" placeholder="100">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="sesion-inicio">Fecha y Hora de Inicio *</label>
+              <input type="datetime-local" id="sesion-inicio" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="sesion-fin">Fecha y Hora de Fin *</label>
+              <input type="datetime-local" id="sesion-fin" required>
+            </div>
+          </div>
+
+          <!-- Botones de Atajo para Duración -->
+          <div class="quick-duration-strip">
+            <span class="quick-label">Duración rápida:</span>
+            <button type="button" class="btn-chip" data-minutos="30">+30 min</button>
+            <button type="button" class="btn-chip" data-minutos="45">+45 min</button>
+            <button type="button" class="btn-chip" data-minutos="60">+1 hora</button>
+            <button type="button" class="btn-chip" data-minutos="90">+1.5 h</button>
+          </div>
+
+          <!-- Caja de Cálculo de Horas & Próximo Desbloqueo en Vivo -->
+          <div class="live-calculation-box">
+            <div class="calc-row">
+              <span class="calc-label">⏱️ Tiempo trabajado:</span>
+              <span id="calc-tiempo-trabajado" class="calc-value">0h 0m</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-label">🔒 Próximo desbloqueo (+120 días):</span>
+              <span id="calc-desbloqueo-preview" class="calc-value accent">--/--/---- --:--</span>
+            </div>
+            <p class="calc-help">El lote volverá a estar disponible exactamente a la misma hora del inicio.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="sesion-observaciones">Observaciones / Novedades (Opcional)</label>
+            <textarea id="sesion-observaciones" rows="2" placeholder="Faltantes de stock, fotos especiales, etc."></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="btn-cancelar-sesion" class="btn btn-secondary">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar y Reprogramar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 2: CREAR / EDITAR LOTE -->
+    <div id="modal-lote" class="modal-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="modal-lote-titulo">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-lote-titulo" class="modal-title">Nuevo Lote de Trabajo</h3>
+          <button class="modal-close" id="btn-cerrar-modal-lote" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <form id="form-lote" class="modal-form">
+          <input type="hidden" id="lote-id">
+
+          <div class="form-group">
+            <label for="lote-supermercado">Supermercado *</label>
+            <input type="text" id="lote-supermercado" required placeholder="Ej: Coto Belgrano" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="lote-area">Área / Sector *</label>
+            <input type="text" id="lote-area" required placeholder="Ej: Perfumería y Cosmética" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="lote-productos">Cantidad Estimada de Productos</label>
+            <input type="number" id="lote-productos" min="0" placeholder="Ej: 120">
+          </div>
+
+          <div class="form-group">
+            <label for="lote-ultimo-inicio">Última Fecha/Hora de Fotos (Opcional si es nuevo)</label>
+            <input type="datetime-local" id="lote-ultimo-inicio">
+            <small class="form-help">Si lo dejas vacío, el lote quedará habilitado de inmediato para fotografiar hoy.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="lote-notas">Notas del Sector (Opcional)</label>
+            <input type="text" id="lote-notas" placeholder="Ej: Góndola 3, pasillo lateral">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="btn-cancelar-lote" class="btn btn-secondary">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Lote</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Script principal de la aplicación -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+.firebase/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local environment
+.env
+.env.local
+
+# Engram temp files (keep compressed chunks in .engram/)
+.engram/*.tmp
+.engram/lock
