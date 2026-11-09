@@ -212,6 +212,23 @@ class TableroViewModel extends ChangeNotifier {
     );
 
     await repository.guardarRegistro(registro);
+
+    // Garantizar que el lote asociado quede actualizado con su nuevo desbloqueo a +120 días
+    final indexLote = _lotes.indexWhere((l) => l.id == loteId);
+    if (indexLote >= 0) {
+      final loteActual = _lotes[indexLote];
+      final loteActualizado = loteActual.copyWith(
+        supermercado: registro.supermercado,
+        area: registro.area,
+        cantidadProductos: registro.cantidadProductos > 0
+            ? registro.cantidadProductos
+            : loteActual.cantidadProductos,
+        ultimoInicio: registro.inicio,
+        proximoDesbloqueo: registro.nuevoDesbloqueo,
+      );
+      await repository.guardarLote(loteActualizado);
+    }
+
     await cancelarSesionActiva();
     _lotes = await repository.obtenerLotes();
     _registros = await repository.obtenerRegistros();

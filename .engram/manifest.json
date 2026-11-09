@@ -48,6 +48,14 @@
       "sessions": 1,
       "memories": 1,
       "prompts": 0
+    },
+    {
+      "id": "a662af55",
+      "created_by": "malon",
+      "created_at": "2026-11-09T01:02:22.6918888Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }

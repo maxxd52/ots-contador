@@ -115,6 +115,8 @@ class LocalOtsRepository implements OtsRepository {
     if (index >= 0) {
       final loteActual = lotes[index];
       final loteActualizado = loteActual.copyWith(
+        supermercado: registro.supermercado,
+        area: registro.area,
         ultimoInicio: registro.inicio,
         proximoDesbloqueo: registro.nuevoDesbloqueo,
         cantidadProductos: registro.cantidadProductos > 0

@@ -62,6 +62,36 @@ class FirestoreOtsRepository implements OtsRepository {
         .collection('registros_trabajo')
         .doc(registro.id)
         .set(registro.toJson(), SetOptions(merge: true));
+
+    // Actualizar automáticamente el lote asociado en Firestore para reprogramar su desbloqueo a +120 días
+    final loteRef = _firestore.collection('lotes').doc(registro.loteId);
+    final loteSnap = await loteRef.get();
+
+    if (loteSnap.exists && loteSnap.data() != null) {
+      final loteActual = Lote.fromJson(loteSnap.data()!);
+      final loteActualizado = loteActual.copyWith(
+        supermercado: registro.supermercado,
+        area: registro.area,
+        cantidadProductos: registro.cantidadProductos > 0
+            ? registro.cantidadProductos
+            : loteActual.cantidadProductos,
+        ultimoInicio: registro.inicio,
+        proximoDesbloqueo: registro.nuevoDesbloqueo,
+      );
+      await loteRef.set(loteActualizado.toJson(), SetOptions(merge: true));
+    } else {
+      final nuevoLote = Lote(
+        id: registro.loteId,
+        supermercado: registro.supermercado,
+        area: registro.area,
+        cantidadProductos: registro.cantidadProductos,
+        ultimoInicio: registro.inicio,
+        proximoDesbloqueo: registro.nuevoDesbloqueo,
+        creadoEn: registro.creadoEn,
+      );
+      await loteRef.set(nuevoLote.toJson(), SetOptions(merge: true));
+    }
+
     return registro;
   }
 
