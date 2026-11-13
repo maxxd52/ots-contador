@@ -5,6 +5,9 @@ on:
     branches: [ master, main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Compilar APK Android
@@ -26,6 +29,11 @@ jobs:
           flutter-version: '3.44.8'
           channel: 'stable'
 
+      - name: Configurar Keystore de Firma (si existe)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > flutter_app/android/app/release.keystore
+
       - name: Instalar Dependencias
         run: |
           cd flutter_app
@@ -37,13 +45,41 @@ jobs:
           flutter test
 
       - name: Compilar APK Release
+        env:
+          KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'release.keystore' || '' }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd flutter_app
-          flutter build apk --release
+          flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Preparar Artefactos de Release y version.json
+        run: |
+          mkdir -p release_assets
+          cp flutter_app/build/app/outputs/flutter-apk/app-release.apk release_assets/ots-contador-release.apk
+          VERSION_NAME=$(grep '^version:' flutter_app/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          cat <<EOF > release_assets/version.json
+          {
+            "versionName": "${VERSION_NAME}",
+            "versionCode": ${{ github.run_number }},
+            "apkUrl": "https://github.com/${{ github.repository }}/releases/latest/download/ots-contador-release.apk"
+          }
+          EOF
+
+      - name: Publicar APK en GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: OTS Contador v1.0.${{ github.run_number }}
+          make_latest: true
+          files: |
+            release_assets/ots-contador-release.apk
+            release_assets/version.json
 
       - name: Publicar APK como Artefacto Descargable
         uses: actions/upload-artifact@v4
         with:
           name: OTS-120-Dias-Android-App
-          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          path: release_assets/ots-contador-release.apk
           if-no-files-found: error

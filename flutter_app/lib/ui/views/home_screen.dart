@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/update/app_update_dialog.dart';
+import '../../core/update/app_update_service.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../domain/models/lote.dart';
 import '../viewmodels/tablero_viewmodel.dart';
@@ -28,6 +31,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkAppUpdate());
+    });
+  }
+
+  Future<void> _checkAppUpdate() async {
+    final service = AppUpdateService();
+    final info = await service.checkForUpdate();
+    if (!mounted || info == null) return;
+    await AppUpdateDialog.show(context, info: info, service: service);
   }
 
   @override
