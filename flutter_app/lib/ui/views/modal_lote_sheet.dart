@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/date_formatter.dart';
+import '../../domain/logic/time_calculator.dart';
 import '../../domain/models/lote.dart';
 
 class ModalLoteSheet extends StatefulWidget {
@@ -14,16 +15,20 @@ class ModalLoteSheet extends StatefulWidget {
   });
 
   @override
-  State<ModalLoteSheet> createState() => _ModalLoteSheetState();
+  State<ModalLoteSheet> createState() => ModalLoteSheetState();
 }
 
-class _ModalLoteSheetState extends State<ModalLoteSheet> {
+class ModalLoteSheetState extends State<ModalLoteSheet> {
   late TextEditingController _supermercadoCtrl;
   late TextEditingController _areaCtrl;
   late TextEditingController _productosCtrl;
   late TextEditingController _notasCtrl;
 
   DateTime? _ultimoInicio;
+  bool _isSubmitting = false;
+
+  @visibleForTesting
+  bool get isSubmitting => _isSubmitting;
 
   @override
   void initState() {
@@ -48,6 +53,7 @@ class _ModalLoteSheetState extends State<ModalLoteSheet> {
   }
 
   Future<void> _seleccionarFechaInicio() async {
+    if (_isSubmitting) return;
     final base = _ultimoInicio ?? DateTime.now();
 
     final pickedDate = await showDatePicker(
@@ -96,17 +102,20 @@ class _ModalLoteSheetState extends State<ModalLoteSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      esEdicion ? 'Modificar Lote' : 'Nuevo Lote de Supermercado',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                    Expanded(
+                      child: Text(
+                        esEdicion ? 'Modificar Lote' : 'Nuevo Lote de Supermercado',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
@@ -197,7 +206,7 @@ class _ModalLoteSheetState extends State<ModalLoteSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                     child: const Text('Cancelar'),
                   ),
                 ),
@@ -208,39 +217,20 @@ class _ModalLoteSheetState extends State<ModalLoteSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryPurple,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.primaryPurple.withValues(alpha: 0.7),
+                      disabledForegroundColor: Colors.white,
                     ),
-                    onPressed: () {
-                      final superName = _supermercadoCtrl.text.trim();
-                      final areaName = _areaCtrl.text.trim();
-                      if (superName.isEmpty || areaName.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Supermercado y Área son obligatorios.')),
-                        );
-                        return;
-                      }
-
-                      final lote = widget.loteParaEditar != null
-                          ? widget.loteParaEditar!.copyWith(
-                              supermercado: superName,
-                              area: areaName,
-                              cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
-                              ultimoInicio: _ultimoInicio,
-                              resetUltimoInicio: _ultimoInicio == null,
-                              resetDesbloqueo: _ultimoInicio == null,
-                              notas: _notasCtrl.text,
-                            )
-                          : Lote.crear(
-                              supermercado: superName,
-                              area: areaName,
-                              cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
-                              ultimoInicio: _ultimoInicio,
-                              notas: _notasCtrl.text,
-                            );
-
-                      widget.onGuardar(lote);
-                      Navigator.of(context).pop();
-                    },
-                    child: Text(esEdicion ? 'Guardar Cambios' : 'Crear Lote'),
+                    onPressed: _isSubmitting ? null : _handleGuardar,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(esEdicion ? 'Guardar Cambios' : 'Crear Lote'),
                   ),
                 ),
               ],
@@ -252,5 +242,64 @@ class _ModalLoteSheetState extends State<ModalLoteSheet> {
     ),
   ),
 );
+  }
+
+  Future<void> _handleGuardar() async {
+    if (_isSubmitting) return;
+
+    final superName = _supermercadoCtrl.text.trim();
+    final areaName = _areaCtrl.text.trim();
+    if (superName.isEmpty || areaName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Supermercado y Área son obligatorios.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final calcDesbloqueo = _ultimoInicio != null
+          ? TimeCalculator.calcularProximoDesbloqueo(_ultimoInicio!)
+          : null;
+
+      final lote = widget.loteParaEditar != null
+          ? widget.loteParaEditar!.copyWith(
+              supermercado: superName,
+              area: areaName,
+              cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
+              ultimoInicio: _ultimoInicio,
+              proximoDesbloqueo: calcDesbloqueo,
+              resetUltimoInicio: _ultimoInicio == null,
+              resetDesbloqueo: _ultimoInicio == null,
+              notas: _notasCtrl.text,
+            )
+          : Lote.crear(
+              supermercado: superName,
+              area: areaName,
+              cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
+              ultimoInicio: _ultimoInicio,
+              notas: _notasCtrl.text,
+            );
+
+      final dynamic result = widget.onGuardar(lote);
+      if (result is Future) {
+        await result;
+      }
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar el lote: $e')),
+        );
+      }
+    }
   }
 }

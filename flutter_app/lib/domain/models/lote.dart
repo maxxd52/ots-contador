@@ -70,13 +70,30 @@ class Lote {
     String? notas,
     DateTime? creadoEn,
   }) {
+    final DateTime? nuevoUltimoInicio = resetUltimoInicio
+        ? null
+        : (ultimoInicio ?? this.ultimoInicio);
+
+    final DateTime? nuevoProximoDesbloqueo;
+    if (resetDesbloqueo) {
+      nuevoProximoDesbloqueo = null;
+    } else if (proximoDesbloqueo != null) {
+      nuevoProximoDesbloqueo = proximoDesbloqueo;
+    } else if (resetUltimoInicio) {
+      nuevoProximoDesbloqueo = null;
+    } else if (ultimoInicio != null) {
+      nuevoProximoDesbloqueo = TimeCalculator.calcularProximoDesbloqueo(ultimoInicio);
+    } else {
+      nuevoProximoDesbloqueo = this.proximoDesbloqueo;
+    }
+
     return Lote(
       id: id ?? this.id,
       supermercado: supermercado ?? this.supermercado,
       area: area ?? this.area,
       cantidadProductos: cantidadProductos ?? this.cantidadProductos,
-      ultimoInicio: resetUltimoInicio ? null : (ultimoInicio ?? this.ultimoInicio),
-      proximoDesbloqueo: resetDesbloqueo ? null : (proximoDesbloqueo ?? this.proximoDesbloqueo),
+      ultimoInicio: nuevoUltimoInicio,
+      proximoDesbloqueo: nuevoProximoDesbloqueo,
       notas: notas ?? this.notas,
       creadoEn: creadoEn ?? this.creadoEn,
     );

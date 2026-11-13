@@ -44,6 +44,13 @@ service cloud.firestore {
     // Helper Functions
     // ===============================================================
 
+    // The app has no login: access is open on purpose (no Firebase Auth).
+    // Schema validation and the registros_trabajo delete ban still apply.
+    // To lock down later, change this to: return request.auth != null;
+    function isAuthenticated() {
+      return true;
+    }
+
     // Validate that required fields exist in the incoming data
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
@@ -118,32 +125,37 @@ service cloud.firestore {
 
     // Collection: lotes
     match /lotes/{loteId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
 
-      allow create: if isValidLote(request.resource.data) &&
+      allow create: if isAuthenticated() &&
+                       isValidLote(request.resource.data) &&
                        request.resource.data.id == loteId;
 
-      allow update: if isValidLote(request.resource.data) &&
+      allow update: if isAuthenticated() &&
+                       isValidLote(request.resource.data) &&
                        request.resource.data.id == resource.data.id &&
                        request.resource.data.id == loteId &&
                        request.resource.data.creadoEn == resource.data.creadoEn;
 
-      allow delete: if true;
+      allow delete: if isAuthenticated();
     }
 
     // Collection: registros_trabajo
     match /registros_trabajo/{registroId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
 
-      allow create: if isValidRegistroTrabajo(request.resource.data) &&
+      allow create: if isAuthenticated() &&
+                       isValidRegistroTrabajo(request.resource.data) &&
                        request.resource.data.id == registroId;
 
-      allow update: if isValidRegistroTrabajo(request.resource.data) &&
+      allow update: if isAuthenticated() &&
+                       isValidRegistroTrabajo(request.resource.data) &&
                        request.resource.data.id == resource.data.id &&
                        request.resource.data.id == registroId &&
                        request.resource.data.creadoEn == resource.data.creadoEn;
 
-      allow delete: if true;
+      // Strict immutability: deletion of historical work records is prohibited
+      allow delete: if false;
     }
   }
 }

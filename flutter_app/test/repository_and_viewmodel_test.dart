@@ -79,7 +79,7 @@ void main() {
       expect(vm.lotesHabilitados.any((l) => l.id == loteFuturo.id), isTrue);
     });
 
-    test('TableroViewModel.guardarSesionFotos actualiza explicitamente el lote en el repositorio y lo mueve a lotesFuturos', () async {
+    test('TableroViewModel.guardarSesionFotos ejecuta guardarRegistro de forma atómica y no realiza guardarLote redundante', () async {
       final repo = _MinimalMockRepository();
       final vm = TableroViewModel(repository: repo);
       await vm.inicializar();
@@ -99,6 +99,10 @@ void main() {
         observaciones: 'Sesión completada',
       );
 
+      // Verificación de atomicidad y no-redundancia (R2)
+      expect(repo.guardarRegistroCallCount, equals(1));
+      expect(repo.guardarLoteCallCount, equals(0), reason: 'guardarLote no debe llamarse redundantemente');
+
       expect(vm.registros.length, equals(1));
       expect(vm.lotesHabilitados.any((l) => l.id == loteInicial.id), isFalse);
       expect(vm.lotesFuturos.any((l) => l.id == loteInicial.id), isTrue);
@@ -113,7 +117,7 @@ void main() {
 }
 
 /// Repositorio simulado que emula el comportamiento atómico de Firestore
-/// donde guardarRegistro solo escribe en registros_trabajo sin efectos secundarios implícitos.
+/// donde guardarRegistro persiste atómicamente el registro y reprograma el lote asociado.
 class _MinimalMockRepository implements OtsRepository {
   final List<Lote> _lotes = [
     Lote.crear(
@@ -126,11 +130,15 @@ class _MinimalMockRepository implements OtsRepository {
   final List<RegistroTrabajo> _registros = [];
   Map<String, dynamic>? _sesion;
 
+  int guardarRegistroCallCount = 0;
+  int guardarLoteCallCount = 0;
+
   @override
   Future<List<Lote>> obtenerLotes() async => List.unmodifiable(_lotes);
 
   @override
   Future<Lote> guardarLote(Lote lote) async {
+    guardarLoteCallCount++;
     final idx = _lotes.indexWhere((l) => l.id == lote.id);
     if (idx >= 0) {
       _lotes[idx] = lote;
@@ -150,7 +158,23 @@ class _MinimalMockRepository implements OtsRepository {
 
   @override
   Future<RegistroTrabajo> guardarRegistro(RegistroTrabajo registro) async {
+    guardarRegistroCallCount++;
     _registros.insert(0, registro);
+
+    // Persistencia atómica de lote asociada al registro (contrato R2)
+    final idx = _lotes.indexWhere((l) => l.id == registro.loteId);
+    if (idx >= 0) {
+      final loteActual = _lotes[idx];
+      _lotes[idx] = loteActual.copyWith(
+        supermercado: registro.supermercado,
+        area: registro.area,
+        ultimoInicio: registro.inicio,
+        proximoDesbloqueo: registro.nuevoDesbloqueo,
+        cantidadProductos: registro.cantidadProductos > 0
+            ? registro.cantidadProductos
+            : loteActual.cantidadProductos,
+      );
+    }
     return registro;
   }
 

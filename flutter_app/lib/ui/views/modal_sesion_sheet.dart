@@ -27,10 +27,10 @@ class ModalSesionSheet extends StatefulWidget {
   });
 
   @override
-  State<ModalSesionSheet> createState() => _ModalSesionSheetState();
+  State<ModalSesionSheet> createState() => ModalSesionSheetState();
 }
 
-class _ModalSesionSheetState extends State<ModalSesionSheet> {
+class ModalSesionSheetState extends State<ModalSesionSheet> {
   late TextEditingController _supermercadoCtrl;
   late TextEditingController _areaCtrl;
   late TextEditingController _productosCtrl;
@@ -38,6 +38,25 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
 
   late DateTime _inicio;
   late DateTime _fin;
+  bool _isSubmitting = false;
+
+  @visibleForTesting
+  bool get isSubmitting => _isSubmitting;
+
+  @visibleForTesting
+  void setFinForTesting(DateTime fin) {
+    setState(() {
+      _fin = fin;
+    });
+  }
+
+  @visibleForTesting
+  void setInicioFinForTesting(DateTime inicio, DateTime fin) {
+    setState(() {
+      _inicio = inicio;
+      _fin = fin;
+    });
+  }
 
   @override
   void initState() {
@@ -66,12 +85,14 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
   }
 
   void _aplicarDuracionRapida(int minutos) {
+    if (_isSubmitting) return;
     setState(() {
       _fin = _inicio.add(Duration(minutes: minutos));
     });
   }
 
   Future<void> _seleccionarFechaHora(bool esInicio) async {
+    if (_isSubmitting) return;
     final fechaBase = esInicio ? _inicio : _fin;
 
     final pickedDate = await showDatePicker(
@@ -140,7 +161,7 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
@@ -361,7 +382,7 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                     child: const Text('Cancelar'),
                   ),
                 ),
@@ -372,29 +393,20 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryPurple,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.primaryPurple.withValues(alpha: 0.7),
+                      disabledForegroundColor: Colors.white,
                     ),
-                    onPressed: () {
-                      final superName = _supermercadoCtrl.text.trim();
-                      final areaName = _areaCtrl.text.trim();
-                      if (superName.isEmpty || areaName.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Supermercado y Área son obligatorios.')),
-                        );
-                        return;
-                      }
-
-                      widget.onGuardar(
-                        loteId: widget.lote.id,
-                        supermercado: superName,
-                        area: areaName,
-                        cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
-                        inicio: _inicio,
-                        fin: _fin,
-                        observaciones: _observacionesCtrl.text,
-                      );
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Guardar y Reprogramar'),
+                    onPressed: _isSubmitting ? null : _handleGuardar,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Guardar y Reprogramar'),
                   ),
                 ),
               ],
@@ -408,6 +420,59 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
 );
   }
 
+  Future<void> _handleGuardar() async {
+    if (_isSubmitting) return;
+
+    final superName = _supermercadoCtrl.text.trim();
+    final areaName = _areaCtrl.text.trim();
+    if (superName.isEmpty || areaName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Supermercado y Área son obligatorios.')),
+      );
+      return;
+    }
+
+    if (_fin.isBefore(_inicio)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La fecha/hora de fin no puede ser anterior a la de inicio'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final dynamic result = widget.onGuardar(
+        loteId: widget.lote.id,
+        supermercado: superName,
+        area: areaName,
+        cantidadProductos: int.tryParse(_productosCtrl.text) ?? 0,
+        inicio: _inicio,
+        fin: _fin,
+        observaciones: _observacionesCtrl.text,
+      );
+      if (result is Future) {
+        await result;
+      }
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar la sesión: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildQuickChip({required int minutos, required String label}) {
     return Expanded(
       child: OutlinedButton(
@@ -416,7 +481,7 @@ class _ModalSesionSheetState extends State<ModalSesionSheet> {
           side: const BorderSide(color: AppColors.borderSubtle),
           backgroundColor: AppColors.surfaceInput,
         ),
-        onPressed: () => _aplicarDuracionRapida(minutos),
+        onPressed: _isSubmitting ? null : () => _aplicarDuracionRapida(minutos),
         child: Text(
           label,
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryPurple),

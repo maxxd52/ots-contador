@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final sesion = widget.viewModel.sesionActiva;
     DateTime inicio = DateTime.now();
     if (sesion != null && sesion['loteId'] == lote.id) {
-      inicio = DateTime.parse(sesion['inicio'] as String);
+      inicio = TableroViewModel.parsearFechaInicio(sesion['inicio']) ?? DateTime.now();
     }
 
     showDialog(
@@ -137,13 +137,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         return Scaffold(
           backgroundColor: AppColors.desktopBackdrop,
-          body: vm.isLoading
+          body: (vm.isLoading && vm.lotes.isEmpty)
               ? const Center(child: CircularProgressIndicator())
               : LayoutBuilder(
                   builder: (context, constraints) {
                     final isDesktop = constraints.maxWidth > 580;
 
-                    final appContent = Container(
+                    final appContent = Material(
                       color: AppColors.scaffoldBackground,
                       child: Column(
                         children: [
@@ -212,6 +212,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ],
                             ),
                           ),
+
+                          // Banner de Modo Offline
+                          if (vm.isOffline) _buildOfflineBanner(context, vm),
 
                           // Selector de Pestañas M3
                           Container(
@@ -595,6 +598,51 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             );
           }),
       ],
+    );
+  }
+
+  Widget _buildOfflineBanner(BuildContext context, TableroViewModel vm) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.warningContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.cloud_off,
+            size: 18,
+            color: AppColors.warningAmberDark,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Modo sin conexión: operando con datos locales.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.warningAmberDark,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: vm.isLoading ? null : () => vm.reintentar(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              foregroundColor: AppColors.warningAmberDark,
+            ),
+            child: const Text(
+              'Reintentar',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

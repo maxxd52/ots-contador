@@ -133,4 +133,112 @@ void main() {
       expect(reg.nuevoDesbloqueo.year, equals(2027));
     });
   });
+
+  group('Lote.copyWith - Sincronización del ciclo de 120 días (R4)', () {
+    test('Al modificar ultimoInicio sin especificar proximoDesbloqueo, se recalcula automáticamente a +120 días', () {
+      final inicioOriginal = DateTime(2026, 11, 5, 10, 0);
+      final loteOriginal = Lote.crear(
+        id: 'lote_1',
+        supermercado: 'Coto Belgrano',
+        area: 'Perfumería',
+        ultimoInicio: inicioOriginal,
+      );
+
+      // Desbloqueo original: 5 de marzo 2027
+      expect(loteOriginal.proximoDesbloqueo, equals(DateTime(2027, 3, 5, 10, 0)));
+
+      // Modificar ultimoInicio a 10 días después (15 de nov 2026)
+      final nuevoInicio = DateTime(2026, 11, 15, 14, 0);
+      final loteActualizado = loteOriginal.copyWith(ultimoInicio: nuevoInicio);
+
+      expect(loteActualizado.ultimoInicio, equals(nuevoInicio));
+      expect(loteActualizado.proximoDesbloqueo, isNotNull);
+      // 120 días desde el 15 de nov 2026: 15 de marzo 2027
+      expect(loteActualizado.proximoDesbloqueo!.year, equals(2027));
+      expect(loteActualizado.proximoDesbloqueo!.month, equals(3));
+      expect(loteActualizado.proximoDesbloqueo!.day, equals(15));
+      expect(loteActualizado.proximoDesbloqueo!.hour, equals(14));
+      expect(loteActualizado.proximoDesbloqueo!.minute, equals(0));
+    });
+
+    test('Respeta proximoDesbloqueo explícito cuando el llamador lo provee', () {
+      final lote = Lote.crear(
+        supermercado: 'Jumbo',
+        area: 'Carnes',
+        ultimoInicio: DateTime(2026, 11, 5),
+      );
+
+      final fechaPersonalizada = DateTime(2027, 6, 1, 12, 0);
+      final actualizado = lote.copyWith(
+        ultimoInicio: DateTime(2026, 12, 1),
+        proximoDesbloqueo: fechaPersonalizada,
+      );
+
+      expect(actualizado.proximoDesbloqueo, equals(fechaPersonalizada));
+    });
+
+    test('resetUltimoInicio: true limpia tanto ultimoInicio como proximoDesbloqueo a null', () {
+      final lote = Lote.crear(
+        supermercado: 'Disco',
+        area: 'Bebidas',
+        ultimoInicio: DateTime(2026, 11, 5),
+      );
+      expect(lote.proximoDesbloqueo, isNotNull);
+
+      final reseteado = lote.copyWith(resetUltimoInicio: true);
+      expect(reseteado.ultimoInicio, isNull);
+      expect(reseteado.proximoDesbloqueo, isNull);
+    });
+
+    test('resetDesbloqueo: true limpia proximoDesbloqueo a null preservando ultimoInicio', () {
+      final fechaInicio = DateTime(2026, 11, 5);
+      final lote = Lote.crear(
+        supermercado: 'Disco',
+        area: 'Bebidas',
+        ultimoInicio: fechaInicio,
+      );
+
+      final actualizado = lote.copyWith(resetDesbloqueo: true);
+      expect(actualizado.ultimoInicio, equals(fechaInicio));
+      expect(actualizado.proximoDesbloqueo, isNull);
+    });
+
+    test('Modificar campos no relacionados (supermercado, cantidadProductos, notas) no altera fechas', () {
+      final inicio = DateTime(2026, 11, 5, 10, 0);
+      final lote = Lote.crear(
+        supermercado: 'Carrefour',
+        area: 'Limpieza',
+        cantidadProductos: 50,
+        ultimoInicio: inicio,
+      );
+      final desbloqueoOriginal = lote.proximoDesbloqueo;
+
+      final actualizado = lote.copyWith(
+        supermercado: 'Carrefour Express',
+        cantidadProductos: 100,
+        notas: 'Notas adicionales',
+      );
+
+      expect(actualizado.supermercado, equals('Carrefour Express'));
+      expect(actualizado.cantidadProductos, equals(100));
+      expect(actualizado.ultimoInicio, equals(inicio));
+      expect(actualizado.proximoDesbloqueo, equals(desbloqueoOriginal));
+    });
+
+    test('Lote previamente sin fotos (habilitado) adquiere proximoDesbloqueo (+120 días) al recibir ultimoInicio', () {
+      final loteHabilitado = Lote.crear(
+        supermercado: 'Dia',
+        area: 'Frescos',
+      );
+      expect(loteHabilitado.ultimoInicio, isNull);
+      expect(loteHabilitado.proximoDesbloqueo, isNull);
+
+      final nuevoInicio = DateTime(2026, 11, 20, 9, 30);
+      final actualizado = loteHabilitado.copyWith(ultimoInicio: nuevoInicio);
+
+      expect(actualizado.ultimoInicio, equals(nuevoInicio));
+      expect(actualizado.proximoDesbloqueo, isNotNull);
+      expect(actualizado.proximoDesbloqueo, equals(TimeCalculator.calcularProximoDesbloqueo(nuevoInicio)));
+    });
+  });
 }
