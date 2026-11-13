@@ -30,9 +30,12 @@ jobs:
           channel: 'stable'
 
       - name: Configurar Keystore de Firma (si existe)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > flutter_app/android/app/release.keystore
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > flutter_app/android/app/release.keystore
+          fi
 
       - name: Instalar Dependencias
         run: |
@@ -46,7 +49,7 @@ jobs:
 
       - name: Compilar APK Release
         env:
-          KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'release.keystore' || '' }}
+          KEYSTORE_FILE: release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
